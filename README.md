@@ -3,10 +3,39 @@
 [![R Version](https://img.shields.io/badge/R-v4.6.0-blue.svg)](https://www.r-project.org/)
 [![Shiny Version](https://img.shields.io/badge/Shiny-v1.13.0-blue.svg)](https://shiny.posit.co/)
 [![Docker Environment](https://img.shields.io/badge/Docker-rocker/shiny:latest-blue.svg)](https://hub.docker.com/r/rocker/shiny)
+[![Model Context Protocol](https://img.shields.io/badge/MCP-Compliant-success.svg)](https://modelcontextprotocol.io)
+[![Whiskers](https://img.shields.io/badge/Whiskers-Tukey%20%7C%20Spear%20%7C%20Altman-green.svg)](#advanced-statistical-capabilities)
+[![Confidence Intervals](https://img.shields.io/badge/CI-Median%20Notches%20%7C%20Mean%20CI-blue.svg)](#advanced-statistical-capabilities)
 
 This is the repository for the Shiny application presented in **"BoxPlotR: a web tool for generation of box plots"** (Spitzer et al. 2014).
 
 ![BoxPlotR Modernized Preview](assets/boxplotr_preview.png)
+
+Advanced Statistical Capabilities
+---------------------------------
+
+BoxPlotR v2.0.0 is engineered for biostatistics and rigorous exploratory data analysis, automating standard publication-quality data summaries:
+
+### 1. Robust Whisker Calculations
+* **Tukey Whiskers (`range = 1.5`):** Whiskers extend to the most extreme data point within $1.5 \times \text{IQR}$ (Interquartile Range) from the box hinges. Outliers are plotted individually.
+* **Spear Whiskers (`range = 0`):** Whiskers span the absolute minimum and maximum data values, treating no data points as outliers.
+* **Altman Percentiles (`range > 0`):** Whiskers represent symmetric percentiles (e.g. 5th and 95th, or 2.5th and 97.5th percentiles) directly from the sample distribution—ideal for larger clinical datasets.
+
+### 2. Precise Median Notches (Confidence Intervals)
+Notches represent the $95\%$ confidence interval around the median, calculated using:
+$$\text{Median} \pm 1.58 \times \frac{\text{IQR}}{\sqrt{n}}$$
+If the notches of two box plots do not overlap, their medians differ with strong statistical evidence (approx. $95\%$ confidence level).
+
+### 3. Sample-Size Weighted Box Widths (`varwidth`)
+Align box widths proportionally to the square root of the number of observations ($\sqrt{n}$) to immediately alert reviewers to sample size variations across groups.
+
+### 4. Mean & Confidence Interval Overlays
+Superimpose sample means as high-contrast red diamonds, with customizable error bars showing $83\%$, $90\%$, or $95\%$ confidence intervals of the mean.
+
+### 5. Multi-Modal Density Estimation
+Toggle from standard summaries to **Violin Plots** or **Beanplots** to inspect kernel density bandwidths, skewness, and multimodal distributions.
+
+---
 
 Installation and Run Options
 ----------------------------
