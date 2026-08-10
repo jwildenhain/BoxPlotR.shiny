@@ -156,6 +156,13 @@ shinyServer(function(input, output, session) {
         check.names = FALSE
       )
     }
+    validate(
+      need(ncol(data) > 0, "The input must contain at least one data column."),
+      need(
+        all(vapply(data, is.numeric, logical(1))),
+        "All data columns must be numeric. Remove sample names or other text columns before plotting."
+      )
+    )
     return(data)
   })
 
@@ -360,13 +367,10 @@ shinyServer(function(input, output, session) {
         # Get natively calculated boxplot statistics matching the whiskerType (Tukey, Spear, Altman)
         bp_stats <- boxplot_stats()
         
+        # Keep all identity-stat aesthetics in data space. scale_y_log10()
+        # transforms them together when a logarithmic scale is selected.
         notchlower_val <- bp_stats$conf[1, ]
         notchupper_val <- bp_stats$conf[2, ]
-        if (log_scale) {
-          # Safely transform to log10 space since scale_y_log10 doesn't automatically transform custom aesthetics
-          notchlower_val <- log10(pmax(1e-10, notchlower_val))
-          notchupper_val <- log10(pmax(1e-10, notchupper_val))
-        }
         
         df_stats <- data.frame(
           Group = factor(bp_stats$names, levels = colnames(plot_data)),
@@ -1050,8 +1054,8 @@ shinyServer(function(input, output, session) {
         horizontal = FALSE, onefile = FALSE, paper = "special",
         width = input$myWidth / 72, height = input$myHeight / 72
       )
+      on.exit(dev.off(), add = TRUE)
       generate_box_plot(data_m())
-      dev.off()
     },
     contentType = "application/postscript"
   )
@@ -1063,8 +1067,8 @@ shinyServer(function(input, output, session) {
     },
     content = function(file) {
       pdf(file, width = input$myWidth / 72, height = input$myHeight / 72)
+      on.exit(dev.off(), add = TRUE)
       generate_box_plot(data_m())
-      dev.off()
     },
     contentType = "application/pdf"
   )
@@ -1076,8 +1080,8 @@ shinyServer(function(input, output, session) {
     },
     content = function(file) {
       svg(file, width = input$myWidth / 72, height = input$myHeight / 72)
+      on.exit(dev.off(), add = TRUE)
       generate_box_plot(data_m())
-      dev.off()
     },
     contentType = "image/svg"
   )

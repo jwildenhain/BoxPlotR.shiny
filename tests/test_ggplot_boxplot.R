@@ -3,6 +3,13 @@ library(ggplot2)
 
 context("BoxPlotR ggplot2 Boxplot Tests")
 
+test_file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+test_dir <- if (length(test_file_arg)) {
+  dirname(normalizePath(sub("^--file=", "", test_file_arg[[1]])))
+} else {
+  getwd()
+}
+
 test_that("ggplot2 boxplot rendering works with notches and overlays", {
   # Mock dataset
   plot_data <- list(
@@ -11,7 +18,7 @@ test_that("ggplot2 boxplot rendering works with notches and overlays", {
   )
   
   # Calculate boxplot stats using our custom myboxplot.stats
-  source("../boxplot_stats_Function.R")
+  source(file.path(test_dir, "..", "boxplot_stats_Function.R"))
   
   bp_stats <- boxplot(plot_data, na.rm = TRUE, range = 1.5, plot = FALSE)
   

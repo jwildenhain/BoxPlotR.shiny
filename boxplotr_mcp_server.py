@@ -43,26 +43,49 @@ def generate_plot(arguments):
     varwidth = overlays.get("varwidth", arguments.get("varwidth", False))
     notch = overlays.get("notch", arguments.get("notch", False))
     
-    # Validation
+    # The schema helps clients, but direct tools/call requests can bypass it.
     if not data_str:
         raise ValueError("Missing 'data' or 'data_config.values' argument")
     if not output_path:
         raise ValueError("Missing 'output_path' argument")
+
+    allowed_values = {
+        "plot_type": (plot_type, {"boxplot", "violin", "beanplot"}),
+        "plot_engine": (plot_engine, {"classic", "ggplot2"}),
+        "style_guide": (style_guide, {"none", "nature", "science", "economist", "ft"}),
+        "orientation": (orientation, {"vertical", "horizontal"}),
+        "add_grid": (add_grid, {"none", "both", "x", "y"}),
+        "point_type": (point_type, {"normal", "jittered", "beeswarm"}),
+    }
+    for name, (value, allowed) in allowed_values.items():
+        if value not in allowed:
+            raise ValueError(f"Invalid {name}: {value!r}")
+    if not isinstance(colors, list) or not all(isinstance(c, str) for c in colors):
+        raise ValueError("'colors' must be an array of strings")
+    if not isinstance(point_size, (int, float)) or isinstance(point_size, bool) or point_size <= 0:
+        raise ValueError("'point_size' must be a positive number")
+    if not isinstance(point_transparency, (int, float)) or isinstance(point_transparency, bool) or not 0 <= point_transparency <= 100:
+        raise ValueError("'point_transparency' must be between 0 and 100")
+    if mean_ci_level not in {83, 90, 95}:
+        raise ValueError("'mean_ci_level' must be one of 83, 90, or 95")
         
     # Resolve absolute paths
     output_path = os.path.abspath(output_path)
+    if os.path.splitext(output_path)[1].lower() != ".png":
+        raise ValueError("'output_path' must end in .png")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
-    # Create R list for colors
+    # JSON strings use escaping that is also valid in R string literals.
     if colors:
-        colors_r = "c(" + ", ".join(f'"{c}"' for c in colors) + ")"
+        colors_r = "c(" + ", ".join(json.dumps(c) for c in colors) + ")"
     else:
         colors_r = "NULL"
+    app_dir = os.path.dirname(os.path.abspath(__file__))
         
     # R Template code supporting both Classic R and ggplot2 along with style guides
     r_code_template = """
-source("/home/jw/Source/BoxPlotR.shiny/BoxPlotR_functions.R")
-source("/home/jw/Source/BoxPlotR.shiny/boxplot_stats_Function.R")
+source(__BOXPLOTR_FUNCTIONS__)
+source(__BOXPLOT_STATS__)
 library(beeswarm)
 library(vioplot)
 library(beanplot)
@@ -101,12 +124,9 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     # Calculate boxplot stats using overridden boxplot()
     bp_stats <- boxplot(plot_data, range = 1.5, plot = FALSE)
     
+    # Keep notch values in data space; scale_y_log10 transforms all y aesthetics.
     notchlower_val <- bp_stats$conf[1, ]
     notchupper_val <- bp_stats$conf[2, ]
-    if (my_log_val) {
-      notchlower_val <- log10(pmax(1e-10, notchlower_val))
-      notchupper_val <- log10(pmax(1e-10, notchupper_val))
-    }
     
     df_stats <- data.frame(
       Group = factor(bp_stats$names, levels = colnames(plot_data)),
@@ -478,31 +498,40 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
 }
 """
 
+    string_tokens = (
+        "PLOT_ENGINE", "PLOT_TYPE", "POINT_TYPE", "STYLE_GUIDE",
+        "ADD_GRID", "TITLE", "SUBTITLE", "XLAB", "YLAB", "OUTPUT_PATH",
+    )
+    for token in string_tokens:
+        r_code_template = r_code_template.replace(f'"__{token}__"', f'__{token}__')
+
     r_code = r_code_template
+    r_code = r_code.replace("__BOXPLOTR_FUNCTIONS__", json.dumps(os.path.join(app_dir, "BoxPlotR_functions.R")))
+    r_code = r_code.replace("__BOXPLOT_STATS__", json.dumps(os.path.join(app_dir, "boxplot_stats_Function.R")))
     r_code = r_code.replace("__DATA_STR__", json.dumps(data_str))
     r_code = r_code.replace("__COLORS_R__", colors_r)
     r_code = r_code.replace("__ORIENTATION__", "TRUE" if orientation == "horizontal" else "FALSE")
     r_code = r_code.replace("__LOG_SCALE__", "TRUE" if log_scale else "FALSE")
-    r_code = r_code.replace("__OUTPUT_PATH__", output_path)
-    r_code = r_code.replace("__PLOT_TYPE__", plot_type)
-    r_code = r_code.replace("__TITLE__", title)
-    r_code = r_code.replace("__SUBTITLE__", subtitle)
-    r_code = r_code.replace("__XLAB__", xlab)
-    r_code = r_code.replace("__YLAB__", ylab)
+    r_code = r_code.replace("__OUTPUT_PATH__", json.dumps(output_path))
+    r_code = r_code.replace("__PLOT_TYPE__", json.dumps(plot_type))
+    r_code = r_code.replace("__TITLE__", json.dumps(title))
+    r_code = r_code.replace("__SUBTITLE__", json.dumps(subtitle))
+    r_code = r_code.replace("__XLAB__", json.dumps(xlab))
+    r_code = r_code.replace("__YLAB__", json.dumps(ylab))
     r_code = r_code.replace("__VARWIDTH__", "TRUE" if varwidth else "FALSE")
     r_code = r_code.replace("__NOTCH__", "TRUE" if notch else "FALSE")
     r_code = r_code.replace("__OUTLINE__", "FALSE" if show_points else "TRUE")
-    r_code = r_code.replace("__ADD_GRID__", add_grid)
+    r_code = r_code.replace("__ADD_GRID__", json.dumps(add_grid))
     r_code = r_code.replace("__SHOW_POINTS__", "TRUE" if show_points else "FALSE")
-    r_code = r_code.replace("__POINT_TYPE__", point_type)
+    r_code = r_code.replace("__POINT_TYPE__", json.dumps(point_type))
     r_code = r_code.replace("__POINT_SIZE__", str(point_size))
     r_code = r_code.replace("__POINT_TRANSPARENCY__", str(point_transparency))
     r_code = r_code.replace("__ADD_MEANS__", "TRUE" if add_means else "FALSE")
     r_code = r_code.replace("__ADD_MEAN_CI__", "TRUE" if add_mean_ci else "FALSE")
     r_code = r_code.replace("__MEAN_CI_LEVEL__", str(mean_ci_level))
     
-    r_code = r_code.replace("__PLOT_ENGINE__", plot_engine)
-    r_code = r_code.replace("__STYLE_GUIDE__", style_guide)
+    r_code = r_code.replace("__PLOT_ENGINE__", json.dumps(plot_engine))
+    r_code = r_code.replace("__STYLE_GUIDE__", json.dumps(style_guide))
 
     with tempfile.NamedTemporaryFile(suffix=".R", mode="w", delete=False) as f:
         f.write(r_code)
@@ -513,7 +542,8 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
         result = subprocess.run(
             ["Rscript", temp_script_path],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=60,
         )
         if result.returncode != 0:
             log(f"Rscript failed: {result.stderr}")
@@ -665,7 +695,7 @@ def main():
                                     {
                                         "arguments": {
                                             "data_config": {
-                                                "values": "Group,Value\nSampleA,12.5\nSampleA,14.2\nSampleA,15.8\nSampleB,8.9\nSampleB,10.1\nSampleB,11.5"
+                                                "values": "SampleA,SampleB\n12.5,8.9\n14.2,10.1\n15.8,11.5"
                                             },
                                             "visualization": {
                                                 "plot_type": "boxplot",
@@ -689,7 +719,7 @@ def main():
                                                 "add_means": true,
                                                 "notch": true
                                             },
-                                            "output_path": "/home/jw/Source/BoxPlotR.shiny/assets/example_plot.png"
+                                            "output_path": "/tmp/boxplotr_example_plot.png"
                                         },
                                         "description": "Generates a publication-quality ggplot2 boxplot with notches, sample means, and jittered data points using the Economist style guide."
                                     }
