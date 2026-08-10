@@ -4,12 +4,34 @@ import json
 import os
 import subprocess
 import tempfile
+import base64
+import mimetypes
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def log(msg):
     sys.stderr.write(f"LOG: {msg}\n")
     sys.stderr.flush()
+
+def file_to_mcp_content(path):
+    mime_type, _ = mimetypes.guess_type(path)
+    mime_type = mime_type or "application/octet-stream"
+    with open(path, "rb") as fh:
+        encoded = base64.b64encode(fh.read()).decode("ascii")
+    if mime_type.startswith("image/"):
+        return {
+            "type": "image",
+            "data": encoded,
+            "mimeType": mime_type
+        }
+    return {
+        "type": "resource",
+        "resource": {
+            "uri": f"file://{os.path.abspath(path)}",
+            "mimeType": mime_type,
+            "blob": encoded
+        }
+    }
 
 def generate_plot(arguments):
     # Extract nested sections (supporting the new JSON Schema spec)
@@ -54,6 +76,9 @@ def generate_plot(arguments):
     # Resolve absolute paths
     output_path = os.path.abspath(output_path)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    output_ext = os.path.splitext(output_path)[1].lower()
+    if output_ext not in (".png", ".svg", ".pdf"):
+        raise ValueError("Unsupported output_path extension. Use .png, .svg, or .pdf")
     
     # Create R list for colors
     if colors:
@@ -318,7 +343,17 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   }
   
   # Print / Save plot
-  png("__OUTPUT_PATH__", width = 800, height = 600, res = 120)
+  output_path <- "__OUTPUT_PATH__"
+  output_ext <- tolower(tools::file_ext(output_path))
+  if (output_ext == "png") {
+    png(output_path, width = 800, height = 600, res = 120)
+  } else if (output_ext == "svg") {
+    svg(output_path, width = 8, height = 6)
+  } else if (output_ext == "pdf") {
+    pdf(output_path, width = 8, height = 6)
+  } else {
+    stop("Unsupported output extension. Use png, svg, or pdf.")
+  }
   print(p)
   dev.off()
   
@@ -350,7 +385,17 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     shared_lim <- c(r[1] - (diff(r) * 0.04), r[2] + padding)
   }
   
-  png("__OUTPUT_PATH__", width = 800, height = 600, res = 120)
+  output_path <- "__OUTPUT_PATH__"
+  output_ext <- tolower(tools::file_ext(output_path))
+  if (output_ext == "png") {
+    png(output_path, width = 800, height = 600, res = 120)
+  } else if (output_ext == "svg") {
+    svg(output_path, width = 8, height = 6)
+  } else if (output_ext == "pdf") {
+    pdf(output_path, width = 8, height = 6)
+  } else {
+    stop("Unsupported output extension. Use png, svg, or pdf.")
+  }
   par(bg = bg_fill, family = style_font)
   par(mar = c(5, 5, 4, 2) + 0.1)
   
@@ -724,7 +769,8 @@ def main():
                                     {
                                         "type": "text",
                                         "text": f"Success! BoxPlotR generated the plot successfully and saved it to: {out_path}"
-                                    }
+                                    },
+                                    file_to_mcp_content(out_path)
                                 ],
                                 "isError": False
                             }
