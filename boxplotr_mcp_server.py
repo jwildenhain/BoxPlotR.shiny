@@ -5,6 +5,8 @@ import os
 import subprocess
 import tempfile
 
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
 def log(msg):
     sys.stderr.write(f"LOG: {msg}\n")
     sys.stderr.flush()
@@ -61,8 +63,9 @@ def generate_plot(arguments):
         
     # R Template code supporting both Classic R and ggplot2 along with style guides
     r_code_template = """
-source("/home/jw/Source/BoxPlotR.shiny/BoxPlotR_functions.R")
-source("/home/jw/Source/BoxPlotR.shiny/boxplot_stats_Function.R")
+app_dir <- __APP_DIR_R__
+source(file.path(app_dir, "BoxPlotR_functions.R"))
+source(file.path(app_dir, "boxplot_stats_Function.R"))
 library(beeswarm)
 library(vioplot)
 library(beanplot)
@@ -479,6 +482,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
 """
 
     r_code = r_code_template
+    r_code = r_code.replace("__APP_DIR_R__", json.dumps(APP_DIR))
     r_code = r_code.replace("__DATA_STR__", json.dumps(data_str))
     r_code = r_code.replace("__COLORS_R__", colors_r)
     r_code = r_code.replace("__ORIENTATION__", "TRUE" if orientation == "horizontal" else "FALSE")
