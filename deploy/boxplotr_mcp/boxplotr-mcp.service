@@ -1,0 +1,44 @@
+[Unit]
+Description=BoxPlotR public MCP service
+After=network.target
+
+[Service]
+Type=simple
+User=shiny
+Group=shiny
+WorkingDirectory=/opt/boxplotr-mcp
+EnvironmentFile=-/etc/boxplotr-mcp/analytics.env
+EnvironmentFile=-/etc/boxplotr-mcp/access.env
+EnvironmentFile=-/etc/boxplotr-mcp/runtime.env
+ExecStart=/opt/boxplotr-mcp/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8765 --workers 1 --limit-concurrency 24 --timeout-keep-alive 5
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/boxplotr-mcp
+MemoryMax=3G
+CPUQuota=800%
+UMask=0077
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+RemoveIPC=true
+ProtectClock=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

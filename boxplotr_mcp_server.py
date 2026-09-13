@@ -6,6 +6,8 @@ import subprocess
 import tempfile
 import base64
 import mimetypes
+import time
+from datetime import datetime, timezone
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -33,30 +35,58 @@ def file_to_mcp_content(path):
         }
     }
 
+def record_usage(arguments, success, started, error_type=None):
+    try:
+        data_config = arguments.get("data_config", {})
+        values = data_config.get("values", arguments.get("data", ""))
+        lines = [line for line in values.splitlines() if line.strip()]
+        delimiter = "tab" if lines and "\t" in lines[0] else "comma"
+        columns = len(lines[0].split("\t" if delimiter == "tab" else ",")) if lines else 0
+        visualization = arguments.get("visualization", {})
+        output_path = arguments.get("output_path", "")
+        event = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "tool": "generate_boxplot",
+            "success": bool(success),
+            "duration_ms": round((time.monotonic() - started) * 1000),
+            "input_bytes": len(values.encode("utf-8")),
+            "data_rows": max(0, len(lines) - 1),
+            "data_columns": columns,
+            "plot_type": visualization.get("plot_type", arguments.get("plot_type", "boxplot")),
+            "plot_engine": visualization.get("plot_engine", arguments.get("plot_engine", "classic")),
+            "style_guide": visualization.get("style_guide", arguments.get("style_guide", "none")),
+            "output_format": os.path.splitext(output_path)[1].lower().lstrip("."),
+        }
+        if error_type:
+            event["error_type"] = error_type
+        subprocess.run(["logger", "-t", "boxplotr-mcp-usage", json.dumps(event, separators=(",", ":"))], check=False, timeout=2)
+    except Exception as telemetry_error:
+        log(f"Usage telemetry failed: {type(telemetry_error).__name__}")
+
 def generate_plot(arguments):
     # Extract nested sections (supporting the new JSON Schema spec)
     data_config = arguments.get("data_config", {})
     visualization = arguments.get("visualization", {})
     styling = arguments.get("styling", {})
     overlays = arguments.get("overlays", {})
-    
+
     # Fallback to old flat structure if present (for backward compatibility)
     data_str = data_config.get("values", arguments.get("data", ""))
     output_path = arguments.get("output_path", "")
-    
+
     plot_type = visualization.get("plot_type", arguments.get("plot_type", "boxplot"))
     plot_engine = visualization.get("plot_engine", arguments.get("plot_engine", "classic"))
     style_guide = visualization.get("style_guide", arguments.get("style_guide", "none"))
     orientation = visualization.get("orientation", arguments.get("orientation", "vertical"))
     log_scale = visualization.get("log_scale", arguments.get("log_scale", False))
-    
+
     title = styling.get("title", arguments.get("title", ""))
     subtitle = styling.get("subtitle", arguments.get("subtitle", ""))
     xlab = styling.get("xlab", arguments.get("xlab", ""))
     ylab = styling.get("ylab", arguments.get("ylab", ""))
     colors = styling.get("colors", arguments.get("colors", []))
     add_grid = styling.get("add_grid", arguments.get("add_grid", "none"))
-    
+
     show_points = overlays.get("show_points", arguments.get("show_points", False))
     point_type = overlays.get("point_type", arguments.get("point_type", "jittered"))
     point_size = overlays.get("point_size", arguments.get("point_size", 1.0))
@@ -66,26 +96,26 @@ def generate_plot(arguments):
     mean_ci_level = overlays.get("mean_ci_level", arguments.get("mean_ci_level", 95))
     varwidth = overlays.get("varwidth", arguments.get("varwidth", False))
     notch = overlays.get("notch", arguments.get("notch", False))
-    
+
     # Validation
     if not data_str:
         raise ValueError("Missing 'data' or 'data_config.values' argument")
     if not output_path:
         raise ValueError("Missing 'output_path' argument")
-        
+
     # Resolve absolute paths
     output_path = os.path.abspath(output_path)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     output_ext = os.path.splitext(output_path)[1].lower()
     if output_ext not in (".png", ".svg", ".pdf"):
         raise ValueError("Unsupported output_path extension. Use .png, .svg, or .pdf")
-    
+
     # Create R list for colors
     if colors:
-        colors_r = "c(" + ", ".join(f'"{c}"' for c in colors) + ")"
+        colors_r = "c(" + ", ".join(json.dumps(str(c)) for c in colors) + ")"
     else:
         colors_r = "NULL"
-        
+
     # R Template code supporting both Classic R and ggplot2 along with style guides
     r_code_template = """
 app_dir <- __APP_DIR_R__
@@ -113,7 +143,7 @@ my_log_val <- __LOG_SCALE__
 
 if ("__PLOT_ENGINE__" == "ggplot2") {
   library(ggplot2)
-  
+
   # Convert plot_data to long format
   df_long <- data.frame(
     Value = unlist(plot_data, use.names = FALSE),
@@ -121,21 +151,21 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   )
   df_long <- na.omit(df_long)
   df_long$Group <- factor(df_long$Group, levels = colnames(plot_data))
-  
+
   # Prepare recycled colors vector
   plot_colours <- rep(my_colours, length.out = ncol(plot_data))
-  
+
   if ("__PLOT_TYPE__" == "boxplot") {
     # Calculate boxplot stats using overridden boxplot()
     bp_stats <- boxplot(plot_data, range = 1.5, plot = FALSE)
-    
+
     notchlower_val <- bp_stats$conf[1, ]
     notchupper_val <- bp_stats$conf[2, ]
     if (my_log_val) {
       notchlower_val <- log10(pmax(1e-10, notchlower_val))
       notchupper_val <- log10(pmax(1e-10, notchupper_val))
     }
-    
+
     df_stats <- data.frame(
       Group = factor(bp_stats$names, levels = colnames(plot_data)),
       ymin = bp_stats$stats[1, ],
@@ -147,7 +177,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       notchupper = notchupper_val,
       fill = bp_stats$names
     )
-    
+
     p <- ggplot(df_stats, aes(x = Group, fill = Group)) +
       suppressWarnings(geom_boxplot(
         aes(
@@ -159,13 +189,13 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
         notch = __NOTCH__,
         width = 0.6
       ))
-      
+
     # Identify outliers matching the calculated whiskers
     df_outliers <- df_long
     df_outliers$ymin <- df_stats$ymin[match(df_outliers$Group, df_stats$Group)]
     df_outliers$ymax <- df_stats$ymax[match(df_outliers$Group, df_stats$Group)]
     df_outliers <- df_outliers[df_outliers$Value < df_outliers$ymin | df_outliers$Value > df_outliers$ymax, ]
-    
+
     if (!__SHOW_POINTS__ && nrow(df_outliers) > 0) {
       p <- p + geom_point(
         data = df_outliers,
@@ -201,10 +231,10 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
         alpha = 0.4
       )
   }
-  
+
   # Apply colors
   p <- p + scale_fill_manual(values = plot_colours)
-  
+
   # Points overlay
   if (__SHOW_POINTS__) {
     pt_trans <- 1 - (__POINT_TRANSPARENCY__ / 100)
@@ -212,7 +242,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     pt_col <- "#334155"
     points_data <- if ("__PLOT_TYPE__" == "boxplot") df_long else NULL
     points_aes <- if ("__PLOT_TYPE__" == "boxplot") aes(y = Value) else NULL
-    
+
     if ("__POINT_TYPE__" == "beeswarm" || "__POINT_TYPE__" == "jittered") {
       p <- p + geom_jitter(
         data = points_data,
@@ -230,7 +260,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       )
     }
   }
-  
+
   # Add means
   if (__ADD_MEANS__ && "__PLOT_TYPE__" == "boxplot") {
     p <- p + stat_summary(
@@ -266,12 +296,12 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       )
     }
   }
-  
+
   # Log scale
   if (my_log_val) {
     p <- p + scale_y_log10()
   }
-  
+
   # Labels
   p <- p + labs(
     title = "__TITLE__",
@@ -279,12 +309,12 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     x = "__XLAB__",
     y = "__YLAB__"
   )
-  
+
   # Orientation / flipped coordinates
   if (my_orientation) {
     p <- p + coord_flip()
   }
-  
+
   # Resolve style guide defaults for ggplot
   style_font <- "Inter"
   bg_fill <- "white"
@@ -292,7 +322,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   grid_color <- "#e2e8f0"
   axis_line_color <- "#475569"
   plot_title_hjust <- 0.5
-  
+
   if ("__STYLE_GUIDE__" == "nature") {
     style_font <- "sans"
   } else if ("__STYLE_GUIDE__" == "science") {
@@ -312,7 +342,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     axis_line_color <- "#1e293b"
     plot_title_hjust <- 0
   }
-  
+
   # Theme minimal base
   p <- p + theme_minimal(base_family = style_font) +
     theme(
@@ -327,7 +357,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       axis.line = element_line(color = axis_line_color, linewidth = 0.6),
       axis.ticks = element_line(color = axis_line_color, linewidth = 0.6)
     )
-    
+
   # Gridlines
   if ("__ADD_GRID__" == "none") {
     p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
@@ -341,7 +371,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       panel.grid.minor = element_blank()
     )
   }
-  
+
   # Print / Save plot
   output_path <- "__OUTPUT_PATH__"
   output_ext <- tolower(tools::file_ext(output_path))
@@ -356,12 +386,12 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   }
   print(p)
   dev.off()
-  
+
 } else {
   # Classic Base R drawing code with style guides
   bg_fill <- "white"
   style_font <- ""
-  
+
   if ("__STYLE_GUIDE__" == "nature") {
     style_font <- "sans"
   } else if ("__STYLE_GUIDE__" == "science") {
@@ -373,7 +403,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     style_font <- "serif"
     bg_fill <- "#fff1e5"
   }
-  
+
   my_log <- if (my_log_val) (if (my_orientation) "x" else "y") else ""
 
   # Ranges
@@ -384,7 +414,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     padding <- diff(r) * 0.15
     shared_lim <- c(r[1] - (diff(r) * 0.04), r[2] + padding)
   }
-  
+
   output_path <- "__OUTPUT_PATH__"
   output_ext <- tolower(tools::file_ext(output_path))
   if (output_ext == "png") {
@@ -398,7 +428,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   }
   par(bg = bg_fill, family = style_font)
   par(mar = c(5, 5, 4, 2) + 0.1)
-  
+
   # Drawing
   if ("__PLOT_TYPE__" == "boxplot") {
     boxplot(
@@ -453,7 +483,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       ylab = "__YLAB__"
     )
   }
-  
+
   # Add grid
   if ("__ADD_GRID__" == "both") {
     grid()
@@ -462,7 +492,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   } else if ("__ADD_GRID__" == "y") {
     grid(nx = NA, ny = NULL)
   }
-  
+
   # Add data points
   if (__SHOW_POINTS__) {
     point_style <- if ("__POINT_TYPE__" == "jittered") 2 else if ("__POINT_TYPE__" == "beeswarm") 1 else 0
@@ -486,7 +516,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       )
     }
   }
-  
+
   # Add means
   if (__ADD_MEANS__ && "__PLOT_TYPE__" == "boxplot") {
     boxplot_means <- colMeans(plot_data, na.rm = TRUE)
@@ -495,7 +525,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     } else {
       points(seq_along(boxplot_means), boxplot_means, pch = 18, col = "red", cex = 1.5)
     }
-    
+
     if (__ADD_MEAN_CI__) {
       for (i in seq_along(plot_data)) {
         my_sample <- na.omit(plot_data[[i]])
@@ -507,7 +537,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
           margin_error <- t_value * standard_error
           lower_ci <- boxplot_means[i] - margin_error
           upper_ci <- boxplot_means[i] + margin_error
-  
+
           if (my_orientation) {
             lines(c(lower_ci, upper_ci), c(i, i), col = "red", lwd = 2)
             lines(c(lower_ci, lower_ci), c(i - 0.1, i + 0.1), col = "red", lwd = 2)
@@ -521,7 +551,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       }
     }
   }
-  
+
   dev.off()
 }
 """
@@ -532,37 +562,40 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     r_code = r_code.replace("__COLORS_R__", colors_r)
     r_code = r_code.replace("__ORIENTATION__", "TRUE" if orientation == "horizontal" else "FALSE")
     r_code = r_code.replace("__LOG_SCALE__", "TRUE" if log_scale else "FALSE")
-    r_code = r_code.replace("__OUTPUT_PATH__", output_path)
-    r_code = r_code.replace("__PLOT_TYPE__", plot_type)
-    r_code = r_code.replace("__TITLE__", title)
-    r_code = r_code.replace("__SUBTITLE__", subtitle)
-    r_code = r_code.replace("__XLAB__", xlab)
-    r_code = r_code.replace("__YLAB__", ylab)
+    r_string_content = lambda value: json.dumps(str(value), ensure_ascii=True)[1:-1]
+    r_code = r_code.replace("__OUTPUT_PATH__", r_string_content(output_path))
+    r_code = r_code.replace("__PLOT_TYPE__", r_string_content(plot_type))
+    r_code = r_code.replace("__TITLE__", r_string_content(title))
+    r_code = r_code.replace("__SUBTITLE__", r_string_content(subtitle))
+    r_code = r_code.replace("__XLAB__", r_string_content(xlab))
+    r_code = r_code.replace("__YLAB__", r_string_content(ylab))
     r_code = r_code.replace("__VARWIDTH__", "TRUE" if varwidth else "FALSE")
     r_code = r_code.replace("__NOTCH__", "TRUE" if notch else "FALSE")
     r_code = r_code.replace("__OUTLINE__", "FALSE" if show_points else "TRUE")
-    r_code = r_code.replace("__ADD_GRID__", add_grid)
+    r_code = r_code.replace("__ADD_GRID__", r_string_content(add_grid))
     r_code = r_code.replace("__SHOW_POINTS__", "TRUE" if show_points else "FALSE")
-    r_code = r_code.replace("__POINT_TYPE__", point_type)
+    r_code = r_code.replace("__POINT_TYPE__", r_string_content(point_type))
     r_code = r_code.replace("__POINT_SIZE__", str(point_size))
     r_code = r_code.replace("__POINT_TRANSPARENCY__", str(point_transparency))
     r_code = r_code.replace("__ADD_MEANS__", "TRUE" if add_means else "FALSE")
     r_code = r_code.replace("__ADD_MEAN_CI__", "TRUE" if add_mean_ci else "FALSE")
     r_code = r_code.replace("__MEAN_CI_LEVEL__", str(mean_ci_level))
-    
-    r_code = r_code.replace("__PLOT_ENGINE__", plot_engine)
-    r_code = r_code.replace("__STYLE_GUIDE__", style_guide)
+
+    r_code = r_code.replace("__PLOT_ENGINE__", r_string_content(plot_engine))
+    r_code = r_code.replace("__STYLE_GUIDE__", r_string_content(style_guide))
 
     with tempfile.NamedTemporaryFile(suffix=".R", mode="w", delete=False) as f:
         f.write(r_code)
         temp_script_path = f.name
-        
+
     try:
         log(f"Running Rscript on {temp_script_path}")
         result = subprocess.run(
             ["Rscript", temp_script_path],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=110,
+            env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"},
         )
         if result.returncode != 0:
             log(f"Rscript failed: {result.stderr}")
@@ -580,11 +613,11 @@ def main():
             line = sys.stdin.readline()
             if not line:
                 break
-            
+
             message = json.loads(line)
             method = message.get("method")
             msg_id = message.get("id")
-            
+
             if method == "initialize":
                 response = {
                     "jsonrpc": "2.0",
@@ -602,10 +635,10 @@ def main():
                 }
                 sys.stdout.write(json.dumps(response) + "\n")
                 sys.stdout.flush()
-                
+
             elif method == "notifications/initialized":
                 pass
-                
+
             elif method == "tools/list":
                 response = {
                     "jsonrpc": "2.0",
@@ -721,7 +754,7 @@ def main():
                                                 "plot_engine": "ggplot2",
                                                 "style_guide": "economist",
                                                 "orientation": "vertical",
-                                                "log_scale": false
+                                                "log_scale": False
                                             },
                                             "styling": {
                                                 "title": "Comparison of Sample A and Sample B",
@@ -731,12 +764,12 @@ def main():
                                                 "add_grid": "y"
                                             },
                                             "overlays": {
-                                                "show_points": true,
+                                                "show_points": True,
                                                 "point_type": "jittered",
                                                 "point_size": 1.2,
                                                 "point_transparency": 30,
-                                                "add_means": true,
-                                                "notch": true
+                                                "add_means": True,
+                                                "notch": True
                                             },
                                             "output_path": "/home/jw/Source/BoxPlotR.shiny/assets/example_plot.png"
                                         },
@@ -749,18 +782,20 @@ def main():
                 }
                 sys.stdout.write(json.dumps(response) + "\n")
                 sys.stdout.flush()
-                
+
             elif method == "notifications/initialized":
                 pass
-                
+
             elif method == "tools/call":
                 params = message.get("params", {})
                 tool_name = params.get("name")
                 arguments = params.get("arguments", {})
-                
+
                 if tool_name == "generate_boxplot":
+                    started = time.monotonic()
                     try:
                         out_path = generate_plot(arguments)
+                        record_usage(arguments, True, started)
                         response = {
                             "jsonrpc": "2.0",
                             "id": msg_id,
@@ -776,6 +811,7 @@ def main():
                             }
                         }
                     except Exception as e:
+                        record_usage(arguments, False, started, type(e).__name__)
                         response = {
                             "jsonrpc": "2.0",
                             "id": msg_id,

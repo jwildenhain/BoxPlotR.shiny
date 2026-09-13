@@ -1,0 +1,32 @@
+FROM rocker/r-ver:4.5.1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-venv python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN install2.r --error --skipinstalled \
+    beanplot beeswarm ggplot2 RColorBrewer sm tidyr vioplot
+
+WORKDIR /opt/boxplotr-mcp
+COPY requirements-mcp.txt ./
+RUN python3 -m venv .venv \
+    && .venv/bin/pip install --no-cache-dir --requirement requirements-mcp.txt
+
+COPY deploy/boxplotr_mcp/app.py ./
+COPY boxplotr_mcp_server.py BoxPlotR_functions.R boxplot_stats_Function.R \
+    MyBeanplot.R MyVioplot.R /srv/shiny-server/boxplotr/
+
+RUN groupadd --system shiny \
+    && useradd --system --gid shiny --home-dir /nonexistent --shell /usr/sbin/nologin shiny \
+    && mkdir -p /var/lib/boxplotr-mcp/output /etc/boxplotr-mcp \
+    && printf '{}\n' > /etc/boxplotr-mcp/keys.json \
+    && chown -R shiny:shiny /var/lib/boxplotr-mcp \
+    && chmod -R a-w /opt/boxplotr-mcp /srv/shiny-server/boxplotr
+
+USER shiny
+EXPOSE 8765
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 \
+    CMD .venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=2)"
+
+CMD [".venv/bin/uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8765", "--workers", "1", "--limit-concurrency", "24", "--timeout-keep-alive", "5"]

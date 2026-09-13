@@ -1,0 +1,60 @@
+name: BoxPlotR MCP container
+
+on:
+  push:
+    paths:
+      - "Dockerfile.mcp"
+      - "requirements-mcp.txt"
+      - "boxplotr_mcp_server.py"
+      - "*.R"
+      - "deploy/boxplotr_mcp/**"
+      - "tests/test_mcp_container.py"
+      - ".github/workflows/boxplotr-mcp-container.yml"
+  pull_request:
+    paths:
+      - "Dockerfile.mcp"
+      - "requirements-mcp.txt"
+      - "boxplotr_mcp_server.py"
+      - "*.R"
+      - "deploy/boxplotr_mcp/**"
+      - "tests/test_mcp_container.py"
+      - ".github/workflows/boxplotr-mcp-container.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build MCP image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.mcp
+          load: true
+          push: false
+          tags: boxplotr-mcp:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Start MCP container
+        run: docker run --detach --name boxplotr-mcp --env MCP_IDENTITY_SECRET=docker-ci-runtime-only --publish 8765:8765 boxplotr-mcp:test
+      - name: Wait for health
+        run: |
+          for attempt in $(seq 1 24); do
+            if curl --fail --silent http://127.0.0.1:8765/health >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          docker logs boxplotr-mcp
+          exit 1
+      - name: Test health, MCP and rendering
+        run: python3 tests/test_mcp_container.py
+      - name: Show logs on failure
+        if: failure()
+        run: docker logs boxplotr-mcp

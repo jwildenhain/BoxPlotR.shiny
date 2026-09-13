@@ -104,6 +104,18 @@ To run BoxPlotR as a service on a dedicated Linux host (e.g. Ubuntu):
 
 This repository includes a native, stdio-compliant **Model Context Protocol (MCP) server** (`boxplotr_mcp_server.py`) written in Python with no external library dependencies. It allows large language models (LLMs) to call BoxPlotR's plotting engine directly via standard JSON-RPC tools!
 
+The maintained public Streamable HTTP service is available at `https://mcp.chemgrid.org/boxplotr/`. Its hardened deployment wrapper, systemd unit, Apache configuration, and reproducible Docker build are included under `deploy/boxplotr_mcp/` and `Dockerfile.mcp`.
+
+Build and test the HTTP MCP service locally:
+
+```bash
+docker build -f Dockerfile.mcp -t boxplotr-mcp:local .
+docker run --rm -d --name boxplotr-mcp -e MCP_IDENTITY_SECRET=replace-with-a-random-runtime-secret -p 8765:8765 boxplotr-mcp:local
+python3 tests/test_mcp_container.py
+```
+
+The `BoxPlotR MCP container` GitHub Actions workflow builds the same image and verifies health, MCP initialization, real PNG rendering, and rejection of injection-shaped input on every relevant pull request and push. Production secrets are supplied at runtime and are never built into the image.
+
 #### Running the MCP Server Natively
 Make sure you have `Python 3` and `Rscript` installed on your machine:
 ```bash
