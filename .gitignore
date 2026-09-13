@@ -3,3 +3,7 @@
 
 # Example code in package build process
 *-Ex.R
+
+# Python generated files
+__pycache__/
+*.py[cod]
