@@ -69,6 +69,38 @@ def run(mcp_url, health_url, engines):
                 assert len(data) > 100
                 print(f"PASS {engine} {'TSV' if separator == chr(9) else 'CSV'} {extension}: {expected_type} ({len(data)} bytes)", flush=True)
 
+    matrix_cases = [
+        ("boxplot", "classic", "png", "none", "vertical", False),
+        ("boxplot", "ggplot2", "svg", "nature", "horizontal", True),
+        ("violin", "classic", "pdf", "science", "horizontal", False),
+        ("violin", "ggplot2", "png", "economist", "vertical", True),
+        ("beanplot", "classic", "svg", "ft", "vertical", True),
+        ("beanplot", "ggplot2", "pdf", "none", "horizontal", False),
+    ]
+    for request_id, (plot_type, engine, extension, style, orientation, log_scale) in enumerate(matrix_cases, 10):
+        result = post({"jsonrpc": "2.0", "id": request_id, "method": "tools/call", "params": {
+            "name": "generate_boxplot", "arguments": {
+                "values": "Control,Treatment\n1,2\n2,4\n3,5\n4,6",
+                "plot_type": plot_type, "plot_engine": engine,
+                "style_guide": style, "orientation": orientation,
+                "log_scale": log_scale, "colors": ["#176B87", "#D97706"],
+                "title": f"{plot_type} {engine} {extension}", "show_points": True,
+                "add_means": plot_type == "boxplot", "output_format": extension,
+            },
+        }})["result"]
+        assert not result.get("isError"), result
+        content = result["content"]
+        if extension == "png":
+            data = base64.b64decode(content[1]["data"], validate=True)
+            assert content[1]["mimeType"] == "image/png"
+            assert data.startswith(b"\x89PNG\r\n\x1a\n")
+        else:
+            resource = content[1]["resource"]
+            data = base64.b64decode(resource["blob"], validate=True)
+            assert resource["mimeType"] == {"svg": "image/svg+xml", "pdf": "application/pdf"}[extension]
+            assert ET.fromstring(data).tag == "{http://www.w3.org/2000/svg}svg" if extension == "svg" else data.startswith(b"%PDF")
+        print(f"PASS matrix {plot_type} {engine} {extension} {style} {orientation} log={log_scale}", flush=True)
+
     rejected = post({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {
         "name": "generate_boxplot", "arguments": {"values": "A,B\n1,2", "colors": ['red"); system("id"); #']},
     }})

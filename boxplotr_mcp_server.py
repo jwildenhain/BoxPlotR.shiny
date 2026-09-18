@@ -380,7 +380,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   } else if (output_ext == "svg") {
     svg(output_path, width = 8, height = 6)
   } else if (output_ext == "pdf") {
-    pdf(output_path, width = 8, height = 6)
+    grDevices::cairo_pdf(output_path, width = 8, height = 6)
   } else {
     stop("Unsupported output extension. Use png, svg, or pdf.")
   }

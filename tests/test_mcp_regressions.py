@@ -51,7 +51,7 @@ class MCPRegressionTests(unittest.TestCase):
             subprocess.run(["Rscript", "-e", code], check=True, capture_output=True, text=True)
 
     @unittest.skipUnless(shutil.which("Rscript"), "Rscript is required")
-    def test_render_formats_in_both_engines(self):
+    def test_render_matrix_across_plot_types_engines_and_formats(self):
         available = subprocess.run(
             ["Rscript", "-e", 'p <- c("beeswarm","vioplot","beanplot","sm","ggplot2","RColorBrewer"); quit(status=if(all(vapply(p,requireNamespace,logical(1),quietly=TRUE))) 0 else 1)'],
             capture_output=True,
@@ -59,18 +59,47 @@ class MCPRegressionTests(unittest.TestCase):
         if available.returncode:
             self.skipTest("R plotting packages are not installed")
         signatures = {"png": b"\x89PNG\r\n\x1a\n", "pdf": b"%PDF", "svg": b"<?xml"}
+        styles = ("none", "nature", "science", "economist", "ft")
         with tempfile.TemporaryDirectory() as directory:
-            for engine in ("classic", "ggplot2"):
-                for extension, signature in signatures.items():
-                    with self.subTest(engine=engine, format=extension):
-                        output = Path(directory) / f"{engine}.{extension}"
-                        worker.generate_plot({
-                            "data": "Control,Treatment\n1,2\n2,3\n3,4\n4,5\n100,6",
-                            "visualization": {"plot_engine": engine, "style_guide": "nature"},
-                            "styling": {"title": 'A "quoted" title'},
-                            "output_path": str(output),
-                        })
-                        self.assertTrue(output.read_bytes().startswith(signature))
+            index = 0
+            for plot_type in ("boxplot", "violin", "beanplot"):
+                for engine in ("classic", "ggplot2"):
+                    for extension, signature in signatures.items():
+                        style = styles[index % len(styles)]
+                        orientation = "horizontal" if index % 2 else "vertical"
+                        log_scale = bool((index // 2) % 2)
+                        index += 1
+                        with self.subTest(
+                            plot_type=plot_type,
+                            engine=engine,
+                            format=extension,
+                            style=style,
+                            orientation=orientation,
+                            log_scale=log_scale,
+                        ):
+                            output = Path(directory) / f"{plot_type}-{engine}.{extension}"
+                            worker.generate_plot({
+                                "data": "Control,Treatment\n1,2\n2,3\n3,4\n4,5\n100,6",
+                                "visualization": {
+                                    "plot_type": plot_type,
+                                    "plot_engine": engine,
+                                    "style_guide": style,
+                                    "orientation": orientation,
+                                    "log_scale": log_scale,
+                                },
+                                "styling": {
+                                    "title": 'A "quoted" title',
+                                    "colors": ["#176B87", "#D97706"],
+                                    "add_grid": "y",
+                                },
+                                "overlays": {
+                                    "show_points": True,
+                                    "point_type": "jittered",
+                                    "add_means": plot_type == "boxplot",
+                                },
+                                "output_path": str(output),
+                            })
+                            self.assertTrue(output.read_bytes().startswith(signature))
 
 
 if __name__ == "__main__":
