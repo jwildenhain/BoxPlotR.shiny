@@ -60,6 +60,7 @@ class MCPRegressionTests(unittest.TestCase):
             self.skipTest("R plotting packages are not installed")
         signatures = {"png": b"\x89PNG\r\n\x1a\n", "pdf": b"%PDF", "svg": b"<?xml"}
         styles = ("none", "nature", "science", "economist", "ft")
+        whiskers = ("tukey", "spear", "altman")
         with tempfile.TemporaryDirectory() as directory:
             index = 0
             for plot_type in ("boxplot", "violin", "beanplot"):
@@ -68,6 +69,7 @@ class MCPRegressionTests(unittest.TestCase):
                         style = styles[index % len(styles)]
                         orientation = "horizontal" if index % 2 else "vertical"
                         log_scale = bool((index // 2) % 2)
+                        whisker_type = whiskers[index % len(whiskers)]
                         index += 1
                         with self.subTest(
                             plot_type=plot_type,
@@ -76,6 +78,7 @@ class MCPRegressionTests(unittest.TestCase):
                             style=style,
                             orientation=orientation,
                             log_scale=log_scale,
+                            whisker_type=whisker_type,
                         ):
                             output = Path(directory) / f"{plot_type}-{engine}.{extension}"
                             worker.generate_plot({
@@ -86,6 +89,7 @@ class MCPRegressionTests(unittest.TestCase):
                                     "style_guide": style,
                                     "orientation": orientation,
                                     "log_scale": log_scale,
+                                    "whisker_type": whisker_type,
                                 },
                                 "styling": {
                                     "title": 'A "quoted" title',

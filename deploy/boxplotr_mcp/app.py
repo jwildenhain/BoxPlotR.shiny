@@ -238,6 +238,7 @@ async def generate_boxplot(
     style_guide: str = "none",
     orientation: str = "vertical",
     log_scale: bool = False,
+    whisker_type: str = "tukey",
     title: str = "",
     x_label: str = "",
     y_label: str = "",
@@ -258,6 +259,7 @@ async def generate_boxplot(
     if plot_engine not in {"ggplot2", "classic"}: raise ValueError("Unsupported plot_engine")
     if style_guide not in {"none", "nature", "science", "economist", "ft"}: raise ValueError("Unsupported style_guide")
     if orientation not in {"vertical", "horizontal"}: raise ValueError("Unsupported orientation")
+    if whisker_type not in {"tukey", "spear", "altman"}: raise ValueError("Unsupported whisker_type")
     for field, value in (("title", title), ("x_label", x_label), ("y_label", y_label)): validate_text(value, field)
     if colors is not None and (len(colors) > MAX_COLUMNS or any(not isinstance(c, str) or len(c) not in {4, 7, 9} or not c.startswith("#") or any(ch not in "0123456789abcdefABCDEF" for ch in c[1:]) for c in colors)):
         raise ValueError("colors must be hexadecimal CSS colours")
@@ -272,7 +274,7 @@ async def generate_boxplot(
         "data_config": {"values": values},
         "visualization": {
             "plot_type": plot_type, "plot_engine": plot_engine, "style_guide": style_guide,
-            "orientation": orientation, "log_scale": log_scale,
+            "orientation": orientation, "log_scale": log_scale, "whisker_type": whisker_type,
         },
         "styling": {"title": title, "xlab": x_label, "ylab": y_label, "colors": colors or []},
         "overlays": {"show_points": show_points, "add_means": add_means},

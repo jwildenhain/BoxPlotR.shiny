@@ -139,6 +139,7 @@ Other clients, including Claude Desktop and Antigravity, can connect when they s
 | `style_guide` | `none`, `nature`, `science`, `economist`, `ft` |
 | `orientation` | `vertical` or `horizontal` |
 | `log_scale` | Enable logarithmic scaling |
+| `whisker_type` | `tukey` (1.5xIQR), `spear` (min/max), or `altman` (5th/95th percentiles) |
 | `title`, `x_label`, `y_label` | Figure labels |
 | `colors` | Hexadecimal colours, e.g. `#2563eb` |
 | `show_points`, `add_means` | Raw points; mean markers for box plots |

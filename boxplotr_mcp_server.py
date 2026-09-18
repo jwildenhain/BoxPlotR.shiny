@@ -79,6 +79,7 @@ def generate_plot(arguments):
     style_guide = visualization.get("style_guide", arguments.get("style_guide", "none"))
     orientation = visualization.get("orientation", arguments.get("orientation", "vertical"))
     log_scale = visualization.get("log_scale", arguments.get("log_scale", False))
+    whisker_type = visualization.get("whisker_type", arguments.get("whisker_type", "tukey"))
 
     title = styling.get("title", arguments.get("title", ""))
     subtitle = styling.get("subtitle", arguments.get("subtitle", ""))
@@ -102,6 +103,8 @@ def generate_plot(arguments):
         raise ValueError("Missing 'data' or 'data_config.values' argument")
     if not output_path:
         raise ValueError("Missing 'output_path' argument")
+    if whisker_type not in ("tukey", "spear", "altman"):
+        raise ValueError("Unsupported whisker_type. Use tukey, spear, or altman")
 
     # Resolve absolute paths
     output_path = os.path.abspath(output_path)
@@ -140,6 +143,7 @@ if (is.null(my_colours) || length(my_colours) < ncol(plot_data)) {
 
 my_orientation <- __ORIENTATION__
 my_log_val <- __LOG_SCALE__
+my_range <- switch("__WHISKER_TYPE__", tukey = -1.5, spear = 0, altman = 5)
 
 if ("__PLOT_ENGINE__" == "ggplot2") {
   library(ggplot2)
@@ -157,7 +161,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
 
   if ("__PLOT_TYPE__" == "boxplot") {
     # Calculate boxplot stats using overridden boxplot()
-    bp_stats <- boxplot(plot_data, range = -1.5, plot = FALSE)
+    bp_stats <- boxplot(plot_data, range = my_range, plot = FALSE)
 
     notchlower_val <- bp_stats$conf[1, ]
     notchupper_val <- bp_stats$conf[2, ]
@@ -442,7 +446,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       varwidth = __VARWIDTH__,
       notch = __NOTCH__,
       outline = __OUTLINE__,
-      range = -1.5,
+      range = my_range,
       log = my_log,
       ylim = if (!my_orientation) shared_lim else NULL,
       xlim = if (my_orientation) shared_lim else NULL,
@@ -564,6 +568,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     r_code = r_code.replace("__COLORS_R__", colors_r)
     r_code = r_code.replace("__ORIENTATION__", "TRUE" if orientation == "horizontal" else "FALSE")
     r_code = r_code.replace("__LOG_SCALE__", "TRUE" if log_scale else "FALSE")
+    r_code = r_code.replace("__WHISKER_TYPE__", whisker_type)
     r_string_content = lambda value: json.dumps(str(value), ensure_ascii=True)[1:-1]
     r_code = r_code.replace("__OUTPUT_PATH__", r_string_content(output_path))
     r_code = r_code.replace("__PLOT_TYPE__", r_string_content(plot_type))
@@ -687,6 +692,11 @@ def main():
                                                     "type": "string",
                                                     "enum": ["vertical", "horizontal"],
                                                     "description": "Orientation of the plot (default: vertical)"
+                                                },
+                                                "whisker_type": {
+                                                    "type": "string",
+                                                    "enum": ["tukey", "spear", "altman"],
+                                                    "description": "Boxplot whiskers: Tukey 1.5xIQR, Spear min/max, or Altman 5th/95th percentiles"
                                                 },
                                                 "log_scale": {
                                                     "type": "boolean",

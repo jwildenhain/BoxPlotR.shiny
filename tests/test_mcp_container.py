@@ -70,20 +70,21 @@ def run(mcp_url, health_url, engines):
                 print(f"PASS {engine} {'TSV' if separator == chr(9) else 'CSV'} {extension}: {expected_type} ({len(data)} bytes)", flush=True)
 
     matrix_cases = [
-        ("boxplot", "classic", "png", "none", "vertical", False),
-        ("boxplot", "ggplot2", "svg", "nature", "horizontal", True),
-        ("violin", "classic", "pdf", "science", "horizontal", False),
-        ("violin", "ggplot2", "png", "economist", "vertical", True),
-        ("beanplot", "classic", "svg", "ft", "vertical", True),
-        ("beanplot", "ggplot2", "pdf", "none", "horizontal", False),
+        ("boxplot", "classic", "png", "none", "vertical", False, "tukey"),
+        ("boxplot", "ggplot2", "svg", "nature", "horizontal", True, "spear"),
+        ("violin", "classic", "pdf", "science", "horizontal", False, "altman"),
+        ("violin", "ggplot2", "png", "economist", "vertical", True, "tukey"),
+        ("beanplot", "classic", "svg", "ft", "vertical", True, "spear"),
+        ("beanplot", "ggplot2", "pdf", "none", "horizontal", False, "altman"),
     ]
-    for request_id, (plot_type, engine, extension, style, orientation, log_scale) in enumerate(matrix_cases, 10):
+    for request_id, (plot_type, engine, extension, style, orientation, log_scale, whisker_type) in enumerate(matrix_cases, 10):
         result = post({"jsonrpc": "2.0", "id": request_id, "method": "tools/call", "params": {
             "name": "generate_boxplot", "arguments": {
                 "values": "Control,Treatment\n1,2\n2,4\n3,5\n4,6",
                 "plot_type": plot_type, "plot_engine": engine,
                 "style_guide": style, "orientation": orientation,
-                "log_scale": log_scale, "colors": ["#176B87", "#D97706"],
+                "log_scale": log_scale, "whisker_type": whisker_type,
+                "colors": ["#176B87", "#D97706"],
                 "title": f"{plot_type} {engine} {extension}", "show_points": True,
                 "add_means": plot_type == "boxplot", "output_format": extension,
             },
@@ -99,7 +100,13 @@ def run(mcp_url, health_url, engines):
             data = base64.b64decode(resource["blob"], validate=True)
             assert resource["mimeType"] == {"svg": "image/svg+xml", "pdf": "application/pdf"}[extension]
             assert ET.fromstring(data).tag == "{http://www.w3.org/2000/svg}svg" if extension == "svg" else data.startswith(b"%PDF")
-        print(f"PASS matrix {plot_type} {engine} {extension} {style} {orientation} log={log_scale}", flush=True)
+        print(f"PASS matrix {plot_type} {engine} {extension} {style} {orientation} log={log_scale} whiskers={whisker_type}", flush=True)
+
+    rejected_whiskers = post({"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {
+        "name": "generate_boxplot", "arguments": {"values": "A,B\n1,2", "whisker_type": "unsupported"},
+    }})
+    assert rejected_whiskers["result"]["isError"] is True
+    assert "whisker_type" in rejected_whiskers["result"]["content"][0]["text"]
 
     rejected = post({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {
         "name": "generate_boxplot", "arguments": {"values": "A,B\n1,2", "colors": ['red"); system("id"); #']},
