@@ -128,7 +128,7 @@ library(sm)
 
 # Load data
 data_str <- __DATA_STR__
-plot_data <- read.csv(text = data_str, header = TRUE, check.names = FALSE)
+plot_data <- read.csv(text = data_str, sep = __DATA_SEPARATOR__, header = TRUE, check.names = FALSE)
 plot_data_m <- as.matrix(plot_data)
 
 # Colors
@@ -558,6 +558,8 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
 
     r_code = r_code_template
     r_code = r_code.replace("__APP_DIR_R__", json.dumps(APP_DIR))
+    separator = "\t" if "\t" in data_str.splitlines()[0] else ","
+    r_code = r_code.replace("__DATA_SEPARATOR__", json.dumps(separator))
     r_code = r_code.replace("__DATA_STR__", json.dumps(data_str))
     r_code = r_code.replace("__COLORS_R__", colors_r)
     r_code = r_code.replace("__ORIENTATION__", "TRUE" if orientation == "horizontal" else "FALSE")

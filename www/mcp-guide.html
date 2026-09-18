@@ -77,10 +77,15 @@
   "add_means": true,
   "output_format": "png"
 }</code></pre>
-  <p class="note">Available modifications include plot type, rendering engine, journal or editorial style, orientation, logarithmic scaling, title and axis labels, group colours, raw-point overlays, mean markers and output format.</p>
+  <p class="note">Available modifications include plot type, rendering engine, journal or editorial style, orientation, logarithmic scaling, title and axis labels, group colours, raw-point overlays, mean markers for box plots and output format.</p>
+
+  <h2>Output attachments and supported options</h2>
+  <p>Set <code>output_format</code> to <code>png</code>, <code>svg</code> or <code>pdf</code>. The public response contains a text summary plus a PNG image or an embedded SVG/PDF resource. Resources include <code>uri</code>, <code>mimeType</code> and a base64 <code>blob</code>; the complete file is embedded in the response. Save the attachment in your client.</p>
+  <p>The public tool accepts <code>values</code>, <code>plot_type</code>, <code>plot_engine</code>, <code>style_guide</code>, <code>orientation</code>, <code>log_scale</code>, <code>title</code>, <code>x_label</code>, <code>y_label</code>, <code>colors</code>, <code>show_points</code>, <code>add_means</code> and <code>output_format</code>. Use hexadecimal colours such as <code>#2563eb</code>. Styles are <code>none</code>, <code>nature</code>, <code>science</code>, <code>economist</code> and <code>ft</code>.</p>
+  <p>The separate local stdio server accepts <code>output_path</code> and additional controls for notches, variable widths, mean confidence intervals, subtitles, grids and point styling. These are not parameters of the public endpoint.</p>
 
   <h2>Privacy and fair use</h2>
-  <p>Datasets and raw client addresses are not sent to Google Analytics. Client addresses are immediately converted to one-way pseudonymous identifiers for quota enforcement and usage reporting. Temporary generated files expire automatically.</p>
+  <p>Datasets and raw client addresses are not sent to Google Analytics. Client addresses are immediately converted to one-way pseudonymous identifiers for quota enforcement and usage reporting. Temporary generated files are eligible for deletion after one hour and cleaned up on subsequent plot requests.</p>
   <footer>Examples generated and verified through the live BoxPlotR MCP endpoint on 13 September 2026.</footer>
 </main>
 </body>
