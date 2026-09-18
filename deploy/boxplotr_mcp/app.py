@@ -210,6 +210,39 @@ def send_ga4_event(event: dict) -> None:
         pass
 
 
+def send_ga4_user_activity(service: str) -> None:
+    """Count privacy-safe unique MCP clients without request metadata."""
+    if not GA4_MEASUREMENT_ID or not GA4_API_SECRET:
+        return
+    anonymous_client = hashlib.sha256(
+        f"{service}-mcp:{client_key_id.get()}".encode()
+    ).hexdigest()[:32]
+    payload = {
+        "client_id": f"mcp.{anonymous_client}",
+        "non_personalized_ads": True,
+        "events": [{
+            "name": f"{service}_mcp_user_activity",
+            "params": {
+                "app_name": service,
+                "interface": "mcp",
+                "engagement_time_msec": 1,
+            },
+        }],
+    }
+    request = urllib.request.Request(
+        "https://www.google-analytics.com/mp/collect?"
+        f"measurement_id={GA4_MEASUREMENT_ID}&api_secret={GA4_API_SECRET}",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=3) as response:
+            response.read()
+    except (OSError, urllib.error.URLError):
+        pass
+
+
 def cleanup_outputs() -> None:
     cutoff = time.time() - OUTPUT_TTL_SECONDS
     for path in (STATE_DIR / "output").glob("boxplotr-*.*"):
@@ -238,6 +271,7 @@ async def generate_boxplot(
     style_guide: str = "none",
     orientation: str = "vertical",
     log_scale: bool = False,
+    whisker_type: str = "tukey",
     title: str = "",
     x_label: str = "",
     y_label: str = "",
@@ -258,6 +292,7 @@ async def generate_boxplot(
     if plot_engine not in {"ggplot2", "classic"}: raise ValueError("Unsupported plot_engine")
     if style_guide not in {"none", "nature", "science", "economist", "ft"}: raise ValueError("Unsupported style_guide")
     if orientation not in {"vertical", "horizontal"}: raise ValueError("Unsupported orientation")
+    if whisker_type not in {"tukey", "spear", "altman"}: raise ValueError("Unsupported whisker_type")
     for field, value in (("title", title), ("x_label", x_label), ("y_label", y_label)): validate_text(value, field)
     if colors is not None and (len(colors) > MAX_COLUMNS or any(not isinstance(c, str) or len(c) not in {4, 7, 9} or not c.startswith("#") or any(ch not in "0123456789abcdefABCDEF" for ch in c[1:]) for c in colors)):
         raise ValueError("colors must be hexadecimal CSS colours")
@@ -272,7 +307,7 @@ async def generate_boxplot(
         "data_config": {"values": values},
         "visualization": {
             "plot_type": plot_type, "plot_engine": plot_engine, "style_guide": style_guide,
-            "orientation": orientation, "log_scale": log_scale,
+            "orientation": orientation, "log_scale": log_scale, "whisker_type": whisker_type,
         },
         "styling": {"title": title, "xlab": x_label, "ylab": y_label, "colors": colors or []},
         "overlays": {"show_points": show_points, "add_means": add_means},
@@ -309,6 +344,7 @@ async def generate_boxplot(
         )
         record_event(**event)
         await asyncio.to_thread(send_ga4_event, event)
+        await asyncio.to_thread(send_ga4_user_activity, "boxplotr")
 
 
 class ClientIdentityMiddleware(BaseHTTPMiddleware):
