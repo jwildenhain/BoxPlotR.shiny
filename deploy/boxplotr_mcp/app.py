@@ -221,7 +221,7 @@ def send_ga4_user_activity(service: str) -> None:
         "client_id": f"mcp.{anonymous_client}",
         "non_personalized_ads": True,
         "events": [{
-            "name": "mcp_user_activity",
+            "name": f"{service}_mcp_user_activity",
             "params": {
                 "app_name": service,
                 "interface": "mcp",
