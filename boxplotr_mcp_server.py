@@ -157,7 +157,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
 
   if ("__PLOT_TYPE__" == "boxplot") {
     # Calculate boxplot stats using overridden boxplot()
-    bp_stats <- boxplot(plot_data, range = 1.5, plot = FALSE)
+    bp_stats <- boxplot(plot_data, range = -1.5, plot = FALSE)
 
     notchlower_val <- bp_stats$conf[1, ]
     notchupper_val <- bp_stats$conf[2, ]
@@ -442,7 +442,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       varwidth = __VARWIDTH__,
       notch = __NOTCH__,
       outline = __OUTLINE__,
-      range = 1.5,
+      range = -1.5,
       log = my_log,
       ylim = if (!my_orientation) shared_lim else NULL,
       xlim = if (my_orientation) shared_lim else NULL,

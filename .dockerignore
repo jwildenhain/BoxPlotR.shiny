@@ -1,7 +1,9 @@
 __pycache__/
 *.py[cod]
-assets/
-examples/
-www/
-*.png
-*.xlsx
+.git/
+.Rhistory
+.env
+*.env
+*.sqlite3*
+*.bak*
+*.pre-*

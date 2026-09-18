@@ -1,4 +1,7 @@
 options(shiny.maxRequestSize = 200 * 1024^2)
+# Shiny's default is FALSE, which returns raw R error text to the browser.
+# Full traces remain available in the app log under /var/log/shiny-server/.
+options(shiny.sanitize.errors = TRUE)
 
 # Pre-load example datasets so they don't hit the disk constantly
 sample_data_1_cache <- read.table(

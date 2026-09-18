@@ -1,5 +1,9 @@
 # BoxPlotR
 
+The canonical repository is [jwildenhain/BoxPlotR.shiny](https://github.com/jwildenhain/BoxPlotR.shiny). The older [shiny-boxplot](https://github.com/jwildenhain/shiny-boxplot) repository is retained for historical reference. This repository contains the Shiny application, stdio plotting engine, public MCP gateway, deployment configuration, and illustrated guide.
+
+See [deployment instructions](deploy/boxplotr_mcp/README.md) and the [consolidation record](docs/consolidation-2026-09-18.md).
+
 [![R Version](https://img.shields.io/badge/R-v4.6.0-blue.svg)](https://www.r-project.org/)
 [![Shiny Version](https://img.shields.io/badge/Shiny-v1.13.0-blue.svg)](https://shiny.posit.co/)
 [![Docker Environment](https://img.shields.io/badge/Docker-rocker/shiny:latest-blue.svg)](https://hub.docker.com/r/rocker/shiny)
@@ -17,7 +21,7 @@ Advanced Statistical Capabilities
 BoxPlotR v2.0.0 is engineered for biostatistics and rigorous exploratory data analysis, automating standard publication-quality data summaries:
 
 ### 1. Robust Whisker Calculations
-* **Tukey Whiskers (`range = 1.5`):** Whiskers extend to the most extreme data point within $1.5 \times \text{IQR}$ (Interquartile Range) from the box hinges. Outliers are plotted individually.
+* **Tukey Whiskers (`range = -1.5` in the custom BoxPlotR helper):** Whiskers extend to the most extreme data point within $1.5 \times \text{IQR}$ (Interquartile Range) from the box hinges. Outliers are plotted individually.
 * **Spear Whiskers (`range = 0`):** Whiskers span the absolute minimum and maximum data values, treating no data points as outliers.
 * **Altman Percentiles (`range > 0`):** Whiskers represent symmetric percentiles (e.g. 5th and 95th, or 2.5th and 97.5th percentiles) directly from the sample distribution—ideal for larger clinical datasets.
 
@@ -69,7 +73,7 @@ Before running natively, ensure you have the latest versions of R and RStudio in
 1. Launch R / RStudio Console.
 2. Install the necessary packages:
    ```R
-   install.packages(c("shiny", "beeswarm", "vioplot", "beanplot", "RColorBrewer", "readxl", "sm", "testthat"))
+   install.packages(c("shiny", "beeswarm", "vioplot", "beanplot", "RColorBrewer", "readxl", "sm", "testthat", "ggplot2"))
    ```
 3. Start the application directly:
    ```R
@@ -91,7 +95,7 @@ To run BoxPlotR as a service on a dedicated Linux host (e.g. Ubuntu):
 3. Pull the BoxPlotR repository into your Shiny server apps directory (e.g., `/srv/shiny-server/` or your custom `SHINY_APP_HOME`).
 4. Install all required R packages system-wide:
    ```bash
-   sudo R -e 'install.packages(c("shiny", "beeswarm", "vioplot", "beanplot", "RColorBrewer", "readxl", "sm"), repos="https://cloud.r-project.org/")'
+   sudo R -e 'install.packages(c("shiny", "beeswarm", "vioplot", "beanplot", "RColorBrewer", "readxl", "sm", "ggplot2"), repos="https://cloud.r-project.org/")'
    ```
 5. Restart the server service:
    ```bash
@@ -100,41 +104,81 @@ To run BoxPlotR as a service on a dedicated Linux host (e.g. Ubuntu):
 
 ---
 
-### 5) Model Context Protocol (MCP) Server Integration
+### 5) Public Model Context Protocol (MCP) service
 
-This repository includes a native, stdio-compliant **Model Context Protocol (MCP) server** (`boxplotr_mcp_server.py`) written in Python with no external library dependencies. It allows large language models (LLMs) to call BoxPlotR's plotting engine directly via standard JSON-RPC tools!
+BoxPlotR is available to MCP-compatible AI assistants over public Streamable HTTP:
 
-The maintained public Streamable HTTP service is available at `https://mcp.chemgrid.org/boxplotr/`. Its hardened deployment wrapper, systemd unit, Apache configuration, and reproducible Docker build are included under `deploy/boxplotr_mcp/` and `Dockerfile.mcp`.
+- Endpoint: `https://mcp.chemgrid.org/boxplotr/`
+- Tool: `generate_boxplot`
+- Authentication: none required
+- Dataset limit: 5 MiB per request
+- Usage limit: 20 plot generations per client IP per UTC day
+- Capacity: 10 plot jobs can run concurrently
+- Execution timeout: 120 seconds
+- Output formats: PNG, SVG and PDF
 
-Build and test the HTTP MCP service locally:
+#### Codex
+
+Register the public remote server directly:
 
 ```bash
-docker build -f Dockerfile.mcp -t boxplotr-mcp:local .
-docker run --rm -d --name boxplotr-mcp -e MCP_IDENTITY_SECRET=replace-with-a-random-runtime-secret -p 8765:8765 boxplotr-mcp:local
-python3 tests/test_mcp_container.py
+codex mcp add boxplotr --url https://mcp.chemgrid.org/boxplotr/
 ```
 
-The `BoxPlotR MCP container` GitHub Actions workflow builds the same image and verifies health, MCP initialization, real PNG rendering, and rejection of injection-shaped input on every relevant pull request and push. Production secrets are supplied at runtime and are never built into the image.
+Other clients, including Claude Desktop and Antigravity, can connect when they support remote Streamable HTTP MCP servers. No API key or custom authorization header is required.
 
-#### Running the MCP Server Natively
-Make sure you have `Python 3` and `Rscript` installed on your machine:
-```bash
-./boxplotr_mcp_server.py
-```
+#### Tool input
 
-#### Integrating with Claude Desktop / LLM Clients
-To configure the BoxPlotR MCP Server in Claude Desktop, add the following entry to your `claude_desktop_config.json` (usually located at `~/.config/Claude/claude_desktop_config.json` on Linux/macOS or `%APPDATA%/Claude/claude_desktop_config.json` on Windows):
+`generate_boxplot` accepts CSV or tab-separated data in `values`, with column headers and at least one data row. Its principal options are:
+
+| Parameter | Values / purpose |
+| --- | --- |
+| `values` | CSV or TSV dataset; columns represent groups |
+| `plot_type` | `boxplot`, `violin` or `beanplot` |
+| `plot_engine` | `ggplot2` or the supported classic engine |
+| `style_guide` | Rendering style, or `none` |
+| `orientation` | `vertical` or `horizontal` |
+| `log_scale` | Enable logarithmic scaling |
+| `title`, `x_label`, `y_label` | Figure labels |
+| `colors` | List of plot colours |
+| `show_points`, `add_means` | Optional plot overlays |
+| `output_format` | `png`, `svg` or `pdf` |
+
+Example tool arguments:
 
 ```json
 {
-  "mcpServers": {
-    "boxplotr": {
-      "command": "python3",
-      "args": ["/home/jw/Source/BoxPlotR.shiny/boxplotr_mcp_server.py"]
-    }
-  }
+  "values": "Control,Treatment\n1.2,2.4\n1.5,2.9\n1.8,3.1",
+  "plot_type": "boxplot",
+  "plot_engine": "ggplot2",
+  "title": "Treatment response",
+  "show_points": true,
+  "add_means": true,
+  "output_format": "png"
 }
 ```
 
-Once integrated, any LLM configured with MCP can generate publication-grade box plots, violin plots, and bean plots automatically by processing user commands and passing data directly to BoxPlotR!
+The generated file is returned directly in the MCP response. Server-created temporary outputs are removed after their retention period; clients should save any plot they need to keep.
 
+#### Illustrated guide and tested scenarios
+
+The shareable guide at `https://boxplotr.chemgrid.org/mcp-guide.html` documents four plots generated through the live public endpoint:
+
+- the bundled five-sample CSV with custom colours, jittered observations and mean markers;
+- the bundled text scenario as a Nature-style violin plot;
+- the bundled Excel scenario, checked and converted to CSV, on a logarithmic axis with Science styling;
+- an original Economist Impact-inspired editorial plot using illustrative reconstructed values, with attribution to Figure 11a of the public LAC Infrascope 2021/22 report.
+
+The editorial example demonstrates a visual treatment only. It does not reproduce or claim to contain the report's underlying data.
+
+#### Privacy and analytics
+
+Datasets and raw client addresses are not sent to Google Analytics. The service records operational usage in its private database and sends privacy-safe GA4 events for successful and failed plot requests. Analytics parameters include the application/interface, plot type, rendering engine, output format, processing duration, dataset dimensions and error category. Client addresses are immediately converted to one-way pseudonymous identifiers for quota enforcement and analytics.
+
+### 6) Local stdio development server
+
+The repository also includes `boxplotr_mcp_server.py` for local development over standard input/output. This local mode is separate from the hosted service and does not provide hosted authentication or quotas.
+
+```bash
+./boxplotr_mcp_server.py
+```

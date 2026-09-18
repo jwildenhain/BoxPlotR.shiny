@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BoxPlotR public MCP guide</title>
+  <style>
+    :root { color-scheme: light; --ink:#172033; --muted:#536176; --blue:#087ea4; --panel:#fff; --line:#d9e2ec; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:16px/1.6 Inter,system-ui,sans-serif; color:var(--ink); background:#f3f8fc; }
+    header { padding:64px 24px 48px; background:linear-gradient(135deg,#062f4f,#087ea4); color:white; }
+    header div, main { max-width:1120px; margin:auto; }
+    h1 { font-size:clamp(2rem,5vw,3.5rem); line-height:1.08; margin:0 0 14px; }
+    h2 { margin-top:48px; font-size:1.8rem; }
+    h3 { margin-bottom:4px; }
+    a { color:#056b8c; }
+    header a { color:white; }
+    main { padding:36px 24px 72px; }
+    .lede { max-width:760px; font-size:1.15rem; }
+    .facts, .gallery { display:grid; gap:20px; }
+    .facts { grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); margin-top:28px; }
+    .fact, .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:0 8px 28px rgba(25,55,80,.07); }
+    .fact { padding:18px; }
+    .fact strong { display:block; font-size:1.25rem; }
+    .gallery { grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); }
+    .card { overflow:hidden; }
+    .card img { width:100%; height:auto; display:block; background:white; }
+    .card section { padding:20px; }
+    .tag { display:inline-block; padding:3px 9px; border-radius:99px; background:#e1f1f7; color:#075875; font-size:.82rem; font-weight:700; }
+    .prompt { margin-top:16px; padding:14px; border-radius:10px; background:#f1f5f9; border-left:4px solid var(--blue); }
+    .prompt strong { display:block; margin-bottom:5px; }
+    pre { overflow:auto; padding:18px; border-radius:12px; background:#101827; color:#e8eef6; }
+    code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .note { border-left:4px solid var(--blue); padding:12px 16px; background:#e9f5fa; }
+    footer { margin-top:52px; color:var(--muted); }
+    @media (max-width:560px) { .gallery { grid-template-columns:1fr; } header { padding-top:42px; } }
+  </style>
+</head>
+<body>
+<header><div>
+  <p><a href="/">BoxPlotR</a> / MCP documentation</p>
+  <h1>Create publication-ready plots from an AI assistant</h1>
+  <p class="lede">The public BoxPlotR MCP server turns CSV or TSV data into box, violin and bean plots. It works without an account or API key and returns PNG, SVG or PDF output directly to the client.</p>
+</div></header>
+<main>
+  <div class="facts">
+    <div class="fact"><strong>Public endpoint</strong><code>https://mcp.chemgrid.org/boxplotr/</code></div>
+    <div class="fact"><strong>5 MiB</strong>Maximum dataset per request</div>
+    <div class="fact"><strong>20 per day</strong>Plot generations per client IP</div>
+    <div class="fact"><strong>10 concurrent</strong>Plot jobs across the service</div>
+  </div>
+
+  <h2>Register the service</h2>
+  <p>Codex users can register the remote Streamable HTTP endpoint with one command:</p>
+  <pre><code>codex mcp add boxplotr --url https://mcp.chemgrid.org/boxplotr/</code></pre>
+  <p>Then ask the assistant to call <code>generate_boxplot</code>. Claude Desktop, Antigravity and other remote-MCP clients can use the same URL. No authorization header is required.</p>
+
+  <h2>Examples generated through the public MCP server</h2>
+  <div class="gallery">
+    <article class="card"><img src="mcp-example-points-means.png" alt="Five coloured box plots with jittered observations and red mean markers"><section><span class="tag">Points and means</span><h3>Show the observations behind each summary</h3><p>The bundled five-sample CSV uses custom colours, jittered raw points and red diamonds for sample means. This makes distribution spread and outliers visible alongside medians and quartiles.</p><p><code>show_points: true</code> · <code>add_means: true</code> · custom <code>colors</code></p><div class="prompt"><strong>Example prompt</strong>Use the BoxPlotR MCP tool with the attached five-sample CSV. Create a vertical ggplot2 box plot titled “Five sample distributions”. Label the axes “Sample” and “Measured value”, use five distinct blue, cyan, teal, amber and red colours, show the individual jittered observations, add sample means, and return a PNG.</div><p><a href="example-five-samples.csv" download>Download the tested CSV</a></p></section></article>
+    <article class="card"><img src="mcp-example-violin-nature.png" alt="Three violin plots with raw observations"><section><span class="tag">Violin plot</span><h3>Reveal distribution shape</h3><p>The bundled text scenario is rendered with the ggplot2 engine and Nature-style typography. Violin geometry exposes density while overlaid points retain the individual observations.</p><p><code>plot_type: violin</code> · <code>style_guide: nature</code> · <code>show_points: true</code></p><div class="prompt"><strong>Example prompt</strong>Use the BoxPlotR MCP tool with the attached three-sample CSV. Create a vertical violin plot with the ggplot2 engine and Nature style. Title it “Distribution shape by sample”, label the y-axis “Measured value”, colour the groups green, orange and purple, overlay the raw observations, omit mean markers, and return a PNG.</div><p><a href="example-three-samples.csv" download>Download the tested CSV</a></p></section></article>
+    <article class="card"><img src="mcp-example-log-scale.png" alt="Three box plots on a logarithmic response axis"><section><span class="tag">Logarithmic scale</span><h3>Compare measurements spanning orders of magnitude</h3><p>The supplied Excel example contains Baseline, Treated and Knockout measurements on very different scales. After a checked CSV conversion, logarithmic rendering keeps all three conditions legible.</p><p><code>log_scale: true</code> · <code>style_guide: science</code> · <code>add_means: true</code></p><div class="prompt"><strong>Example prompt</strong>Read the attached Excel example, use its Baseline, Treated and Knockout columns, and call the BoxPlotR MCP tool. Create a ggplot2 box plot using Science style and a logarithmic y-axis. Title it “Responses across measurement scales”, use blue, red and teal fills, add mean markers without raw points, and return a PNG.</div><p><a href="example-log-scale.xlsx" download>Download the original Excel file</a> · <a href="example-log-scale.csv" download>CSV used by MCP</a></p></section></article>
+    <article class="card"><img src="mcp-example-economist-impact.png" alt="Editorial-style box plots for score zero, fifty and one hundred"><section><span class="tag">Editorial recreation</span><h3>Reproduce a public-news chart treatment</h3><p>This original demonstration follows the visual language of Figure 11a in the public Economist Impact LAC Infrascope 2021/22 report: a restrained background, direct labels and three strongly separated categories.</p><p>The values are illustrative, reconstructed from the published chart ranges, and are not the report's underlying dataset. Source: <a href="https://impact.economist.com/new-globalisation/infrascope-2024/downloads/EIU_INFRASCOPE_2021_12.pdf" target="_blank" rel="noopener">Economist Impact, Figure 11a</a>.</p><p><code>style_guide: economist</code> · custom editorial palette · descriptive axis labels</p><div class="prompt"><strong>Example prompt</strong>Use the BoxPlotR MCP tool with the attached illustrative score data. Recreate the restrained editorial look of Economist Impact Figure 11a without copying the original figure. Make a vertical ggplot2 box plot in Economist style titled “Overall index score by risk-allocation score”. Label both axes clearly, colour Score 0 red, Score 50 grey and Score 100 blue, omit raw points and means, and return a PNG. State that the values are illustrative.</div><p><a href="economist-impact-illustrative.csv" download>Download the illustrative CSV</a></p></section></article>
+  </div>
+
+  <h2>Example tool call</h2>
+  <pre><code>{
+  "values": "Control,Treatment\n1.2,2.4\n1.5,2.9\n1.8,3.1",
+  "plot_type": "boxplot",
+  "plot_engine": "ggplot2",
+  "style_guide": "nature",
+  "title": "Treatment response",
+  "x_label": "Condition",
+  "y_label": "Response",
+  "colors": ["#2563eb", "#ef4444"],
+  "show_points": true,
+  "add_means": true,
+  "output_format": "png"
+}</code></pre>
+  <p class="note">Available modifications include plot type, rendering engine, journal or editorial style, orientation, logarithmic scaling, title and axis labels, group colours, raw-point overlays, mean markers and output format.</p>
+
+  <h2>Privacy and fair use</h2>
+  <p>Datasets and raw client addresses are not sent to Google Analytics. Client addresses are immediately converted to one-way pseudonymous identifiers for quota enforcement and usage reporting. Temporary generated files expire automatically.</p>
+  <footer>Examples generated and verified through the live BoxPlotR MCP endpoint on 13 September 2026.</footer>
+</main>
+</body>
+</html>
