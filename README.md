@@ -136,12 +136,12 @@ Other clients, including Claude Desktop and Antigravity, can connect when they s
 | `values` | CSV or TSV dataset; columns represent groups |
 | `plot_type` | `boxplot`, `violin` or `beanplot` |
 | `plot_engine` | `ggplot2` or the supported classic engine |
-| `style_guide` | Rendering style, or `none` |
+| `style_guide` | `none`, `nature`, `science`, `economist`, `ft` |
 | `orientation` | `vertical` or `horizontal` |
 | `log_scale` | Enable logarithmic scaling |
 | `title`, `x_label`, `y_label` | Figure labels |
-| `colors` | List of plot colours |
-| `show_points`, `add_means` | Optional plot overlays |
+| `colors` | Hexadecimal colours, e.g. `#2563eb` |
+| `show_points`, `add_means` | Raw points; mean markers for box plots |
 | `output_format` | `png`, `svg` or `pdf` |
 
 Example tool arguments:
@@ -158,7 +158,17 @@ Example tool arguments:
 }
 ```
 
-The generated file is returned directly in the MCP response. Server-created temporary outputs are removed after their retention period; clients should save any plot they need to keep.
+The public response contains a text summary and one attachment: PNG uses MCP
+`image` content (`mimeType` and base64 `data`); SVG/PDF use MCP `resource`
+content containing `resource.uri`, `resource.mimeType`, and base64
+`resource.blob`. The URI identifies the embedded file; clients do not need to
+retrieve it from the server filesystem. Save the attachment in the client.
+Temporary outputs become eligible for cleanup after one hour and are removed
+when a subsequent plot request performs cleanup.
+
+The public endpoint accepts `output_format`, not `output_path`. Notches,
+variable box widths, mean confidence intervals, subtitles, grids, and detailed
+point styling are local stdio options, not public HTTP tool parameters.
 
 #### Illustrated guide and tested scenarios
 
@@ -182,3 +192,10 @@ The repository also includes `boxplotr_mcp_server.py` for local development over
 ```bash
 ./boxplotr_mcp_server.py
 ```
+
+Use the nested `data_config`, `visualization`, `styling`, and `overlays`
+arguments advertised by the local server's `tools/list` response. Supply CSV
+or TSV in `data_config.values` and an `output_path` ending in `.png`, `.svg`,
+or `.pdf`. In stdio mode, PNG/SVG are MCP images and PDF is an embedded
+resource; the same file is also saved at `output_path`. This differs from the
+public HTTP interface described above.

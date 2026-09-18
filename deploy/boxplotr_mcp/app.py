@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import contextvars
 import csv
 import hashlib
@@ -18,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP, Image
+from mcp.types import BlobResourceContents, EmbeddedResource
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -286,8 +288,14 @@ async def generate_boxplot(
         if output_format == "png":
             content.append(Image(path=str(output_path)))
         else:
-            import base64
-            content.append({"type": "resource", "mimeType": {"svg":"image/svg+xml","pdf":"application/pdf"}[output_format], "data": base64.b64encode(output_path.read_bytes()).decode()})
+            content.append(EmbeddedResource(
+                type="resource",
+                resource=BlobResourceContents(
+                    uri=output_path.as_uri(),
+                    mimeType={"svg": "image/svg+xml", "pdf": "application/pdf"}[output_format],
+                    blob=base64.b64encode(output_path.read_bytes()).decode("ascii"),
+                ),
+            ))
         return content
     except Exception as exc:
         error_type = type(exc).__name__

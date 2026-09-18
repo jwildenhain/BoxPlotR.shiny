@@ -736,7 +736,8 @@ shinyUI(fluidPage(
             "<li><b>Tool:</b> <code>generate_boxplot</code></li>",
             "<li><b>Authentication:</b> None required.</li>",
             "<li><b>Limits:</b> 5 MiB per dataset, 20 plot generations per client IP per UTC day, and 10 simultaneous plot jobs.</li>",
-            "<li><b>Formats:</b> PNG, SVG and PDF, returned directly in the MCP response.</li>",
+            "<li><b>Input:</b> CSV or TSV text in <code>values</code>, with one numeric group per column.</li>",
+            "<li><b>Formats:</b> Set <code>output_format</code> to <code>png</code>, <code>svg</code> or <code>pdf</code>. PNG is returned as an MCP image; SVG and PDF as embedded file resources.</li>",
             "</ul>",
             "<h4>Codex setup</h4>",
             "<pre><code>codex mcp add boxplotr --url https://mcp.chemgrid.org/boxplotr/</code></pre>",
@@ -789,12 +790,16 @@ shinyUI(fluidPage(
           HTML("<p>A: Run <code>boxplotr_mcp_server.py</code> over standard I/O (<code>stdio</code>). The local tool supports both rendering engines and returns the generated figure in its MCP response while saving it to <code>output_path</code>.</p>"),
           h5("Q: Which plot modifications can an AI assistant request?"),
           HTML(paste(
-            "<p>A: The public tool supports box, violin and bean plots; ggplot2 and supported classic rendering; Nature, Science and Economist styles; ",
-            "vertical or horizontal orientation; linear or logarithmic axes; custom titles, axis labels and colours; raw-point overlays; mean markers; and PNG, SVG or PDF output. ",
+            "<p>A: The public tool supports box, violin and bean plots; ggplot2 and supported classic rendering; Nature, Science, Economist and Financial Times styles; ",
+            "vertical or horizontal orientation; linear or logarithmic axes; custom titles, axis labels and colours; raw-point overlays; mean markers for box plots; and PNG, SVG or PDF output. ",
             "Requests are limited to 5 MiB and 20 plot generations per client IP per UTC day.</p>",
             sep = ""
           )),
-          h5("Q: Which MCP output formats are supported, and what does the tool return?"),
+          h5("Q: Which options are available through the public MCP endpoint?"),
+          HTML("<p>A: The public tool accepts <code>values</code>, <code>plot_type</code>, <code>plot_engine</code>, <code>style_guide</code>, <code>orientation</code>, <code>log_scale</code>, <code>title</code>, <code>x_label</code>, <code>y_label</code>, <code>colors</code>, <code>show_points</code>, <code>add_means</code> and <code>output_format</code>. Use six-digit hexadecimal colours such as <code>#2563eb</code>. Notches, variable box widths, mean confidence intervals, subtitles, grid selection and point-style controls are local stdio options, not public tool parameters.</p>"),
+          h5("Q: What does the public MCP endpoint return?"),
+          HTML("<p>A: Set <code>output_format</code> to <code>png</code>, <code>svg</code> or <code>pdf</code>. The response contains a text summary plus a PNG image or an embedded SVG/PDF resource with a MIME type and base64 <code>blob</code>. Save the returned attachment in your client. The public tool chooses a temporary server path; it does not accept <code>output_path</code>.</p>"),
+          h5("Q: How do output formats work with the local stdio server?"),
           HTML(paste(
             "<p>A: Set the requested format by changing the file extension in <code>output_path</code>. Use <code>.png</code> for a raster image, ",
             "<code>.svg</code> for an editable vector image, or <code>.pdf</code> for a publication-ready document. The MCP response includes a text summary plus the file payload: ",
@@ -802,7 +807,7 @@ shinyUI(fluidPage(
             "The same file is also saved on disk at <code>output_path</code> for reproducibility.</p>",
             sep = ""
           )),
-          h5("Q: How can I make the MCP server available and run it inside a Docker container?"),
+          h5("Q: How can I run the local stdio MCP server inside a Shiny Docker container?"),
           HTML(paste(
             "<p>A: You can easily route MCP commands to run inside the active BoxPlotR Docker container. ",
             "First, make sure the Dockerfile installs Python 3 (e.g., <code>RUN apt-get update && apt-get install -y python3</code>). ",
