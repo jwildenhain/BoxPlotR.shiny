@@ -210,6 +210,39 @@ def send_ga4_event(event: dict) -> None:
         pass
 
 
+def send_ga4_user_activity(service: str) -> None:
+    """Count privacy-safe unique MCP clients without request metadata."""
+    if not GA4_MEASUREMENT_ID or not GA4_API_SECRET:
+        return
+    anonymous_client = hashlib.sha256(
+        f"{service}-mcp:{client_key_id.get()}".encode()
+    ).hexdigest()[:32]
+    payload = {
+        "client_id": f"mcp.{anonymous_client}",
+        "non_personalized_ads": True,
+        "events": [{
+            "name": "mcp_user_activity",
+            "params": {
+                "app_name": service,
+                "interface": "mcp",
+                "engagement_time_msec": 1,
+            },
+        }],
+    }
+    request = urllib.request.Request(
+        "https://www.google-analytics.com/mp/collect?"
+        f"measurement_id={GA4_MEASUREMENT_ID}&api_secret={GA4_API_SECRET}",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=3) as response:
+            response.read()
+    except (OSError, urllib.error.URLError):
+        pass
+
+
 def cleanup_outputs() -> None:
     cutoff = time.time() - OUTPUT_TTL_SECONDS
     for path in (STATE_DIR / "output").glob("boxplotr-*.*"):
@@ -311,6 +344,7 @@ async def generate_boxplot(
         )
         record_event(**event)
         await asyncio.to_thread(send_ga4_event, event)
+        await asyncio.to_thread(send_ga4_user_activity, "boxplotr")
 
 
 class ClientIdentityMiddleware(BaseHTTPMiddleware):
