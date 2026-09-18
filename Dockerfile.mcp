@@ -13,6 +13,7 @@ RUN python3 -m venv .venv \
     && .venv/bin/pip install --no-cache-dir --requirement requirements-mcp.txt
 
 COPY deploy/boxplotr_mcp/app.py ./
+COPY tests/test_mcp_regressions.py /srv/shiny-server/boxplotr/tests/
 COPY boxplotr_mcp_server.py BoxPlotR_functions.R boxplot_stats_Function.R \
     MyBeanplot.R MyVioplot.R /srv/shiny-server/boxplotr/
 

@@ -6,6 +6,8 @@ shinyUI(fluidPage(
     span("v2.1 Modernized", class = "version-badge")
   ),
   tags$head(
+    tags$script(src = "https://chemgrid.org/chemgrid-analytics.js?v=20260905-2"),
+    tags$title("BoxPlotR"),
     tags$style(HTML(
       "
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -675,6 +677,21 @@ shinyUI(fluidPage(
         ),
         tabPanel(
           "News",
+          h5("September 13, 2026"),
+          HTML(paste(
+            "<p><b>Public BoxPlotR MCP launch:</b> AI assistants can now connect directly to <code>https://mcp.chemgrid.org/boxplotr/</code> without an account or API key. ",
+            "The live service was verified through a registered Codex client using the bundled scenarios. A new <a href=\"mcp-guide.html\" target=\"_blank\">illustrated MCP guide</a> shows custom colours, ",
+            "raw-point and mean overlays, violin geometry, logarithmic axes, journal styles and an original Economist Impact-inspired editorial example.</p>",
+            sep = ""
+          )),
+          h5("August 11, 2026"),
+          HTML(paste(
+            "<p><b>MCP output delivery update:</b> The BoxPlotR MCP server now returns generated plot files directly in the JSON-RPC tool response, ",
+            "while still saving the file to <code>output_path</code>. PNG and SVG outputs are returned as MCP <code>image</code> content, ",
+            "and PDF outputs are returned as MCP <code>resource</code> content with a base64 payload. This makes BoxPlotR easier to use from AI assistants ",
+            "because the generated figure can be displayed inline without separately retrieving the saved file.</p>",
+            sep = ""
+          )),
           h5("May 30, 2026"),
           HTML(paste(
             "<p>Introduced support for the <b>Modern (ggplot2)</b> rendering engine! ",
@@ -710,6 +727,29 @@ shinyUI(fluidPage(
           ))
         ),
         tabPanel(
+          "MCP API",
+          h4("Use BoxPlotR directly from an AI assistant"),
+          HTML(paste(
+            "<p>BoxPlotR provides a public Model Context Protocol service using Streamable HTTP. No account or API key is required.</p>",
+            "<ul>",
+            "<li><b>Endpoint:</b> <code>https://mcp.chemgrid.org/boxplotr/</code></li>",
+            "<li><b>Tool:</b> <code>generate_boxplot</code></li>",
+            "<li><b>Authentication:</b> None required.</li>",
+            "<li><b>Limits:</b> 5 MiB per dataset, 20 plot generations per client IP per UTC day, and 10 simultaneous plot jobs.</li>",
+            "<li><b>Formats:</b> PNG, SVG and PDF, returned directly in the MCP response.</li>",
+            "</ul>",
+            "<h4>Codex setup</h4>",
+            "<pre><code>codex mcp add boxplotr --url https://mcp.chemgrid.org/boxplotr/</code></pre>",
+            "<p>Claude Desktop, Antigravity and other clients can use the same endpoint when configured for remote Streamable HTTP MCP. No authorization header is required.</p>",
+            "<p><a class=\"btn btn-primary\" href=\"mcp-guide.html\" target=\"_blank\">Open the illustrated MCP guide</a></p>",
+            "<h4>Example tool arguments</h4>",
+            "<pre><code>{\n  \"values\": \"Control,Treatment\\n1.2,2.4\\n1.5,2.9\\n1.8,3.1\",\n  \"plot_type\": \"boxplot\",\n  \"plot_engine\": \"ggplot2\",\n  \"title\": \"Treatment response\",\n  \"show_points\": true,\n  \"add_means\": true,\n  \"output_format\": \"png\"\n}</code></pre>",
+            "<h4>Privacy and analytics</h4>",
+            "<p>The service records privacy-safe usage events. Datasets and raw client addresses are never sent to Google Analytics. Client addresses are immediately converted to one-way pseudonymous identifiers for quota enforcement and analytics. Analytics records the interface, plot options, processing time, dataset dimensions and success/failure.</p>",
+            sep = ""
+          ))
+        ),
+        tabPanel(
           "FAQ",
           h5("Q: I have trouble editing the graphic files."),
           p(paste(
@@ -740,9 +780,26 @@ shinyUI(fluidPage(
           )),
           h5("Q: Does BoxPlotR support integration with AI coding assistants (e.g. Claude Desktop, Cursor, Antigravity)?"),
           HTML(paste(
-            "<p>A: Yes! BoxPlotR now includes a pre-configured Model Context Protocol (MCP) server (<code>boxplotr_mcp_server.py</code>). ",
-            "This enables AI assistants to programmatically generate and customize high-quality box plots, violin plots, and bean plots ",
-            "using both R engines directly through automated tools. It works over standard I/O (<code>stdio</code>).</p>",
+            "<p>A: Yes. Register the public Streamable HTTP endpoint with <code>codex mcp add boxplotr --url https://mcp.chemgrid.org/boxplotr/</code>, ",
+            "or enter the same URL in another remote-MCP client. No account, API key or SSH access is required. The <code>generate_boxplot</code> tool returns the generated figure directly in the MCP response. ",
+            "See the <a href=\"mcp-guide.html\" target=\"_blank\">illustrated MCP guide</a> for tested examples.</p>",
+            sep = ""
+          )),
+          h5("Q: Can I run the MCP server locally?"),
+          HTML("<p>A: Run <code>boxplotr_mcp_server.py</code> over standard I/O (<code>stdio</code>). The local tool supports both rendering engines and returns the generated figure in its MCP response while saving it to <code>output_path</code>.</p>"),
+          h5("Q: Which plot modifications can an AI assistant request?"),
+          HTML(paste(
+            "<p>A: The public tool supports box, violin and bean plots; ggplot2 and supported classic rendering; Nature, Science and Economist styles; ",
+            "vertical or horizontal orientation; linear or logarithmic axes; custom titles, axis labels and colours; raw-point overlays; mean markers; and PNG, SVG or PDF output. ",
+            "Requests are limited to 5 MiB and 20 plot generations per client IP per UTC day.</p>",
+            sep = ""
+          )),
+          h5("Q: Which MCP output formats are supported, and what does the tool return?"),
+          HTML(paste(
+            "<p>A: Set the requested format by changing the file extension in <code>output_path</code>. Use <code>.png</code> for a raster image, ",
+            "<code>.svg</code> for an editable vector image, or <code>.pdf</code> for a publication-ready document. The MCP response includes a text summary plus the file payload: ",
+            "PNG and SVG are returned as MCP <code>image</code> content, while PDF is returned as MCP <code>resource</code> content with MIME type and base64 blob. ",
+            "The same file is also saved on disk at <code>output_path</code> for reproducibility.</p>",
             sep = ""
           )),
           h5("Q: How can I make the MCP server available and run it inside a Docker container?"),
@@ -761,7 +818,9 @@ shinyUI(fluidPage(
             "<pre><code>{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"generate_boxplot\",\n    \"arguments\": {\n      \"data_config\": {\n        \"values\": \"SampleA,SampleB\\n12.5,8.9\\n14.2,10.1\\n15.8,11.5\\n13.1,9.4\"\n      },\n      \"visualization\": {\n        \"plot_type\": \"boxplot\",\n        \"plot_engine\": \"ggplot2\",\n        \"style_guide\": \"economist\",\n        \"orientation\": \"vertical\",\n        \"log_scale\": false\n      },\n      \"styling\": {\n        \"title\": \"Comparison of Sample A and Sample B\",\n        \"xlab\": \"Group\",\n        \"ylab\": \"Value\",\n        \"colors\": [\"#0ea5e9\", \"#ef4444\"],\n        \"add_grid\": \"y\"\n      },\n      \"overlays\": {\n        \"show_points\": true,\n        \"point_type\": \"jittered\",\n        \"point_size\": 1.2,\n        \"point_transparency\": 30,\n        \"add_means\": true,\n        \"notch\": true\n      },\n      \"output_path\": \"/absolute/path/to/output_plot.png\"\n    }\n  }\n}</code></pre>",
             "<p>Run the following command in your terminal (with the JSON payload minified onto a single line) to test execution:</p>",
             "<pre><code>echo '{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/call\", \"params\": {\"name\": \"generate_boxplot\", \"arguments\": {\"data_config\": {\"values\": \"SampleA,SampleB\\n12.5,8.9\\n14.2,10.1\\n15.8,11.5\\n13.1,9.4\"}, \"visualization\": {\"plot_type\": \"boxplot\", \"plot_engine\": \"ggplot2\", \"style_guide\": \"economist\", \"orientation\": \"vertical\", \"log_scale\": false}, \"styling\": {\"title\": \"Comparison of Sample A and Sample B\", \"xlab\": \"Group\", \"ylab\": \"Value\", \"colors\": [\"#0ea5e9\", \"#ef4444\"], \"add_grid\": \"y\"}, \"overlays\": {\"show_points\": true, \"point_type\": \"jittered\", \"point_size\": 1.2, \"point_transparency\": 30, \"add_means\": true, \"notch\": true}, \"output_path\": \"assets/mcp_test_plot.png\"}}}' | python3 boxplotr_mcp_server.py</code></pre>",
-            "<p>This command runs the Python server, triggers the R script dynamically, and outputs a clean JSON-RPC response confirming that the output image was generated at <code>assets/mcp_test_plot.png</code>!</p>",
+            "<p>This command runs the Python server, triggers the R script dynamically, and outputs a JSON-RPC response with two content items: ",
+            "a text summary and the generated plot image payload. For PNG output, the second content item has <code>type: image</code> and <code>mimeType: image/png</code>. ",
+            "You can change <code>assets/mcp_test_plot.png</code> to <code>assets/mcp_test_plot.svg</code> or <code>assets/mcp_test_plot.pdf</code> to test vector outputs.</p>",
             sep = ""
           ))
         ),
