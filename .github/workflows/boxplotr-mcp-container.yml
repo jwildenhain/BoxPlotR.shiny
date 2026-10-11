@@ -10,6 +10,7 @@ on:
       - "deploy/boxplotr_mcp/**"
       - "tests/test_mcp_container.py"
       - "tests/test_mcp_regressions.py"
+      - "tests/test_mcp_gateway.py"
       - ".github/workflows/boxplotr-mcp-container.yml"
   pull_request:
     paths:
@@ -20,6 +21,7 @@ on:
       - "deploy/boxplotr_mcp/**"
       - "tests/test_mcp_container.py"
       - "tests/test_mcp_regressions.py"
+      - "tests/test_mcp_gateway.py"
       - ".github/workflows/boxplotr-mcp-container.yml"
   workflow_dispatch:
 
@@ -59,6 +61,8 @@ jobs:
         run: python3 tests/test_mcp_container.py
       - name: Test whisker statistics and all output formats
         run: docker exec boxplotr-mcp /opt/boxplotr-mcp/.venv/bin/python -m unittest discover -s /srv/shiny-server/boxplotr/tests -p test_mcp_regressions.py -v
+      - name: Test privacy-safe export analytics
+        run: docker exec boxplotr-mcp /opt/boxplotr-mcp/.venv/bin/python -m unittest discover -s /srv/shiny-server/boxplotr/tests -p test_mcp_gateway.py -v
       - name: Show logs on failure
         if: failure()
         run: docker logs boxplotr-mcp

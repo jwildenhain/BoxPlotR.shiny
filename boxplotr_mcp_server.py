@@ -79,12 +79,17 @@ def generate_plot(arguments):
     style_guide = visualization.get("style_guide", arguments.get("style_guide", "none"))
     orientation = visualization.get("orientation", arguments.get("orientation", "vertical"))
     log_scale = visualization.get("log_scale", arguments.get("log_scale", False))
+    whisker_type = visualization.get("whisker_type", arguments.get("whisker_type", "tukey"))
 
     title = styling.get("title", arguments.get("title", ""))
     subtitle = styling.get("subtitle", arguments.get("subtitle", ""))
     xlab = styling.get("xlab", arguments.get("xlab", ""))
     ylab = styling.get("ylab", arguments.get("ylab", ""))
     colors = styling.get("colors", arguments.get("colors", []))
+    transparent_background = styling.get("transparent_background", arguments.get("transparent_background", False))
+    unfilled_shapes = styling.get("unfilled_shapes", arguments.get("unfilled_shapes", False))
+    if not isinstance(transparent_background, bool) or not isinstance(unfilled_shapes, bool):
+        raise ValueError("transparent_background and unfilled_shapes must be booleans")
     add_grid = styling.get("add_grid", arguments.get("add_grid", "none"))
 
     show_points = overlays.get("show_points", arguments.get("show_points", False))
@@ -102,6 +107,8 @@ def generate_plot(arguments):
         raise ValueError("Missing 'data' or 'data_config.values' argument")
     if not output_path:
         raise ValueError("Missing 'output_path' argument")
+    if whisker_type not in ("tukey", "spear", "altman"):
+        raise ValueError("Unsupported whisker_type. Use tukey, spear, or altman")
 
     # Resolve absolute paths
     output_path = os.path.abspath(output_path)
@@ -138,8 +145,12 @@ if (is.null(my_colours) || length(my_colours) < ncol(plot_data)) {
   my_colours <- brewer.pal(max(3, ncol(plot_data)), "Pastel1")[1:ncol(plot_data)]
 }
 
+transparent_background <- __TRANSPARENT_BACKGROUND__
+unfilled_shapes <- __UNFILLED_SHAPES__
+shape_colours <- if (unfilled_shapes) rep(NA_character_, ncol(plot_data)) else my_colours
 my_orientation <- __ORIENTATION__
 my_log_val <- __LOG_SCALE__
+my_range <- switch("__WHISKER_TYPE__", tukey = -1.5, spear = 0, altman = 5)
 
 if ("__PLOT_ENGINE__" == "ggplot2") {
   library(ggplot2)
@@ -157,7 +168,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
 
   if ("__PLOT_TYPE__" == "boxplot") {
     # Calculate boxplot stats using overridden boxplot()
-    bp_stats <- boxplot(plot_data, range = -1.5, plot = FALSE)
+    bp_stats <- boxplot(plot_data, range = my_range, plot = FALSE)
 
     notchlower_val <- bp_stats$conf[1, ]
     notchupper_val <- bp_stats$conf[2, ]
@@ -233,7 +244,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   }
 
   # Apply colors
-  p <- p + scale_fill_manual(values = plot_colours)
+  p <- p + scale_fill_manual(values = if (unfilled_shapes) rep(NA_character_, length(plot_colours)) else plot_colours, na.value = NA)
 
   # Points overlay
   if (__SHOW_POINTS__) {
@@ -344,6 +355,11 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   }
 
   # Theme minimal base
+  if (transparent_background) {
+    bg_fill <- "transparent"
+    panel_bg_fill <- "transparent"
+  }
+
   p <- p + theme_minimal(base_family = style_font) +
     theme(
       plot.title = element_text(size = 14, face = "bold", hjust = plot_title_hjust),
@@ -376,11 +392,11 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   output_path <- "__OUTPUT_PATH__"
   output_ext <- tolower(tools::file_ext(output_path))
   if (output_ext == "png") {
-    png(output_path, width = 800, height = 600, res = 120)
+    png(output_path, width = 800, height = 600, res = 120, bg = if (transparent_background) "transparent" else "white")
   } else if (output_ext == "svg") {
-    svg(output_path, width = 8, height = 6)
+    svg(output_path, width = 8, height = 6, bg = if (transparent_background) "transparent" else "white")
   } else if (output_ext == "pdf") {
-    pdf(output_path, width = 8, height = 6)
+    grDevices::cairo_pdf(output_path, width = 8, height = 6, bg = if (transparent_background) "transparent" else "white")
   } else {
     stop("Unsupported output extension. Use png, svg, or pdf.")
   }
@@ -418,14 +434,15 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   output_path <- "__OUTPUT_PATH__"
   output_ext <- tolower(tools::file_ext(output_path))
   if (output_ext == "png") {
-    png(output_path, width = 800, height = 600, res = 120)
+    png(output_path, width = 800, height = 600, res = 120, bg = if (transparent_background) "transparent" else "white")
   } else if (output_ext == "svg") {
-    svg(output_path, width = 8, height = 6)
+    svg(output_path, width = 8, height = 6, bg = if (transparent_background) "transparent" else "white")
   } else if (output_ext == "pdf") {
-    pdf(output_path, width = 8, height = 6)
+    grDevices::cairo_pdf(output_path, width = 8, height = 6, bg = if (transparent_background) "transparent" else "white")
   } else {
     stop("Unsupported output extension. Use png, svg, or pdf.")
   }
+  if (transparent_background) bg_fill <- "transparent"
   par(bg = bg_fill, family = style_font)
   par(mar = c(5, 5, 4, 2) + 0.1)
 
@@ -437,12 +454,12 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       sub = "__SUBTITLE__",
       xlab = "__XLAB__",
       ylab = "__YLAB__",
-      col = my_colours,
+      col = shape_colours,
       horizontal = my_orientation,
       varwidth = __VARWIDTH__,
       notch = __NOTCH__,
       outline = __OUTLINE__,
-      range = -1.5,
+      range = my_range,
       log = my_log,
       ylim = if (!my_orientation) shared_lim else NULL,
       xlim = if (my_orientation) shared_lim else NULL,
@@ -451,7 +468,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
   } else if ("__PLOT_TYPE__" == "violin") {
     vioplot(
       as.list(plot_data),
-      col = my_colours,
+      col = shape_colours,
       horizontal = my_orientation,
       border = "black",
       ylim = shared_lim,
@@ -469,7 +486,7 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
       plot_data,
       xlim = c(0.5, ncol(plot_data) + 0.5),
       ylim = shared_lim,
-      col = as.list(my_colours),
+      col = if (unfilled_shapes) lapply(my_colours, function(colour) c(NA, rep(colour, 3))) else as.list(my_colours),
       horizontal = my_orientation,
       border = "black",
       names = colnames(plot_data),
@@ -562,8 +579,11 @@ if ("__PLOT_ENGINE__" == "ggplot2") {
     r_code = r_code.replace("__DATA_SEPARATOR__", json.dumps(separator))
     r_code = r_code.replace("__DATA_STR__", json.dumps(data_str))
     r_code = r_code.replace("__COLORS_R__", colors_r)
+    r_code = r_code.replace("__TRANSPARENT_BACKGROUND__", "TRUE" if transparent_background else "FALSE")
+    r_code = r_code.replace("__UNFILLED_SHAPES__", "TRUE" if unfilled_shapes else "FALSE")
     r_code = r_code.replace("__ORIENTATION__", "TRUE" if orientation == "horizontal" else "FALSE")
     r_code = r_code.replace("__LOG_SCALE__", "TRUE" if log_scale else "FALSE")
+    r_code = r_code.replace("__WHISKER_TYPE__", whisker_type)
     r_string_content = lambda value: json.dumps(str(value), ensure_ascii=True)[1:-1]
     r_code = r_code.replace("__OUTPUT_PATH__", r_string_content(output_path))
     r_code = r_code.replace("__PLOT_TYPE__", r_string_content(plot_type))
@@ -688,6 +708,11 @@ def main():
                                                     "enum": ["vertical", "horizontal"],
                                                     "description": "Orientation of the plot (default: vertical)"
                                                 },
+                                                "whisker_type": {
+                                                    "type": "string",
+                                                    "enum": ["tukey", "spear", "altman"],
+                                                    "description": "Boxplot whiskers: Tukey 1.5xIQR, Spear min/max, or Altman 5th/95th percentiles"
+                                                },
                                                 "log_scale": {
                                                     "type": "boolean",
                                                     "description": "Whether to use a logarithmic scale (log10) for the numeric axis"
@@ -699,6 +724,8 @@ def main():
                                             "type": "object",
                                             "description": "Custom aesthetic and text properties",
                                             "properties": {
+                                                "transparent_background": {"type": "boolean", "default": False, "description": "Remove page and panel backgrounds, overriding the style guide; supported by PNG, SVG and PDF"},
+                                                "unfilled_shapes": {"type": "boolean", "default": False, "description": "Remove box, violin and bean area fills while preserving editable outlines and statistical lines"},
                                                 "title": { "type": "string", "description": "Main title of the plot" },
                                                 "subtitle": { "type": "string", "description": "Subtitle of the plot" },
                                                 "xlab": { "type": "string", "description": "X-axis label" },

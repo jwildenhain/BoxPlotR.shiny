@@ -288,7 +288,7 @@ shinyServer(function(input, output, session) {
   }
 
   # *** Generate the box plot ***
-  generate_box_plot <- function(plot_data) {
+  generate_box_plot <- function(plot_data, transparent_background = FALSE, unfilled_shapes = FALSE) {
     # Safe input resolvers to prevent "argument is of length zero" or NULL crashes during reactive updates
     plot_engine <- if (is.null(input$plotEngine) || length(input$plotEngine) == 0) "classic" else input$plotEngine
     plot_type <- if (is.null(input$plotType) || length(input$plotType) == 0) "0" else input$plotType
@@ -358,6 +358,8 @@ shinyServer(function(input, output, session) {
       
       plot_colours <- if (plot_type == "0") my_colours else my_colours_2
       
+      if (unfilled_shapes) plot_colours[] <- NA_character_
+
       # Initialize ggplot and Plot Types
       if (plot_type == "0") { # Boxplot
         # Get natively calculated boxplot statistics matching the whiskerType (Tukey, Spear, Altman)
@@ -454,7 +456,7 @@ shinyServer(function(input, output, session) {
       }
       
       # Apply custom fill colors
-      p <- p + scale_fill_manual(values = plot_colours)
+      p <- p + scale_fill_manual(values = plot_colours, na.value = NA)
       
       # Data points overlay
       if (show_data_points) {
@@ -599,6 +601,11 @@ shinyServer(function(input, output, session) {
         plot_title_hjust <- 0
       }
 
+      if (transparent_background) {
+        bg_fill <- "transparent"
+        panel_bg_fill <- "transparent"
+      }
+
       # Theme
       p <- p + theme_minimal(base_family = style_font) +
         theme(
@@ -673,6 +680,8 @@ shinyServer(function(input, output, session) {
       bg_fill <- "#fff1e5"
     }
     
+    if (transparent_background) bg_fill <- "transparent"
+
     if (style_font != "") {
       par(mar = c(5, 8, 4, 2), bg = bg_fill, family = style_font)
     } else {
@@ -711,6 +720,18 @@ shinyServer(function(input, output, session) {
     }
     if (length(point_colors) == 1) {
       point_colors <- rep(point_colors, nr_of_samples)
+    }
+
+    # Bean colours also control internal lines; remove only the area fill.
+    bean_colours <- if (length(my_colours_2) > 1) as.list(my_colours_2) else my_colours_2
+    if (unfilled_shapes) {
+      my_colours[] <- NA_character_
+      my_colours_2[] <- NA_character_
+      bean_colours <- lapply(bean_colours, function(colour) {
+        if (length(colour) == 1) colour <- rep(colour, 4)
+        colour[1] <- NA_character_
+        colour
+      })
     }
 
     point_t <- 1 - (point_transparency / 100)
@@ -851,11 +872,7 @@ shinyServer(function(input, output, session) {
             at = not_plot_points,
             xlim = c(0.5, nr_of_samples + 0.5),
             ylim = vals_lim,
-            col = if (length(my_colours_2) > 1) {
-              as.list(my_colours_2)
-            } else {
-              my_colours_2
-            },
+            col = bean_colours,
             horizontal = my_orientation,
             border = bean_border,
             what = c(1, 1, 1, as.logical(bean_plot_median_mean)),
@@ -1065,9 +1082,10 @@ shinyServer(function(input, output, session) {
       "Boxplot.pdf"
     },
     content = function(file) {
-      pdf(file, width = input$myWidth / 72, height = input$myHeight / 72)
-      generate_box_plot(data_m())
-      dev.off()
+      grDevices::cairo_pdf(file, width = input$myWidth / 72, height = input$myHeight / 72,
+          bg = if (isTRUE(input$transparentBackground)) "transparent" else "white")
+      on.exit(dev.off(), add = TRUE)
+      generate_box_plot(data_m(), isTRUE(input$transparentBackground), isTRUE(input$unfilledShapes))
     },
     contentType = "application/pdf"
   )
@@ -1078,9 +1096,10 @@ shinyServer(function(input, output, session) {
       "Boxplot.svg"
     },
     content = function(file) {
-      svg(file, width = input$myWidth / 72, height = input$myHeight / 72)
-      generate_box_plot(data_m())
-      dev.off()
+      svg(file, width = input$myWidth / 72, height = input$myHeight / 72,
+          bg = if (isTRUE(input$transparentBackground)) "transparent" else "white")
+      on.exit(dev.off(), add = TRUE)
+      generate_box_plot(data_m(), isTRUE(input$transparentBackground), isTRUE(input$unfilledShapes))
     },
     contentType = "image/svg"
   )

@@ -1,0 +1,36 @@
+--- app.py
++++ app.py
+@@ -189,6 +189,7 @@
+                 "plot_type": event["plot_type"],
+                 "plot_engine": event["plot_engine"],
+                 "output_format": event["output_format"],
++                "file_extension": event["output_format"],
+                 "transparent_background": int(event.get("transparent_background", False)),
+                 "unfilled_shapes": int(event.get("unfilled_shapes", False)),
+                 "success": int(event["success"]),
+@@ -215,7 +216,7 @@
+         pass
+ 
+ 
+-def send_ga4_user_activity(service: str) -> None:
++def send_ga4_user_activity(service: str, activity: dict | None = None) -> None:
+     """Count privacy-safe unique MCP clients without request metadata."""
+     if not GA4_MEASUREMENT_ID or not GA4_API_SECRET:
+         return
+@@ -230,6 +231,7 @@
+             "params": {
+                 "app_name": service,
+                 "interface": "mcp",
++                **(activity or {}),
+                 "session_id": int(time.time() // 1800) * 1800,
+                 "engagement_time_msec": 1,
+             },
+@@ -268,7 +270,7 @@
+     max_request_body_size=6 * 1024 * 1024,
+ )
+ 
+-register_chemgrid_tools(mcp, usage_callback=lambda: send_ga4_user_activity("chemgrid"))
++register_chemgrid_tools(mcp, usage_callback=lambda activity: send_ga4_user_activity("chemgrid", activity))
+ register_molclass_tools(mcp, usage_callback=lambda: send_ga4_user_activity("molclass"))
+ 
+ 

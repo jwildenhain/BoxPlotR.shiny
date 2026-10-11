@@ -4,7 +4,13 @@ library(sm)
 context("BoxPlotR Plotting Edge Cases")
 
 # Source the custom plot functions
-source("../MyVioplot.R")
+test_file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+test_dir <- if (length(test_file_arg)) {
+  dirname(normalizePath(sub("^--file=", "", test_file_arg[[1]])))
+} else {
+  getwd()
+}
+source(file.path(test_dir, "..", "MyVioplot.R"))
 
 test_that("MyVioplot handles all-NA data gracefully", {
   # Create a dataset where one sample is completely NA

@@ -137,11 +137,14 @@ Other clients, including Claude Desktop and Antigravity, can connect when they s
 | `plot_type` | `boxplot`, `violin` or `beanplot` |
 | `plot_engine` | `ggplot2` or the supported classic engine |
 | `style_guide` | `none`, `nature`, `science`, `economist`, `ft` |
+| `whisker_type` | `tukey`, `spear` or `altman` |
 | `orientation` | `vertical` or `horizontal` |
 | `log_scale` | Enable logarithmic scaling |
 | `title`, `x_label`, `y_label` | Figure labels |
 | `colors` | Hexadecimal colours, e.g. `#2563eb` |
 | `show_points`, `add_means` | Raw points; mean markers for box plots |
+| `transparent_background` | Remove page and panel backgrounds in PNG, SVG and PDF; overrides style backgrounds |
+| `unfilled_shapes` | Leave box, violin and bean areas unfilled for recolouring in Illustrator |
 | `output_format` | `png`, `svg` or `pdf` |
 
 Example tool arguments:
@@ -184,6 +187,11 @@ The editorial example demonstrates a visual treatment only. It does not reproduc
 #### Privacy and analytics
 
 Datasets and raw client addresses are not sent to Google Analytics. The service records operational usage in its private database and sends privacy-safe GA4 events for successful and failed plot requests. Analytics parameters include the application/interface, plot type, rendering engine, output format, processing duration, dataset dimensions and error category. Client addresses are immediately converted to one-way pseudonymous identifiers for quota enforcement and analytics.
+
+For Illustrator-ready downloads in the web app, select **Transparent background**
+and **Unfilled shapes** above the PDF/SVG buttons. The preview retains its
+colours. Through public MCP, set `transparent_background: true` and
+`unfilled_shapes: true`; local stdio uses the same fields under `styling`.
 
 ### 6) Local stdio development server
 

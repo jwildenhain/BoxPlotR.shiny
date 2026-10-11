@@ -33,6 +33,9 @@ def run(mcp_url, health_url, engines):
     tools = post({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]["tools"]
     schema = next(t for t in tools if t["name"] == "generate_boxplot")["inputSchema"]
     assert "output_format" in schema["properties"]
+    for option in ("transparent_background", "unfilled_shapes"):
+        assert schema["properties"][option]["type"] == "boolean"
+        assert schema["properties"][option]["default"] is False
     assert "output_path" not in schema["properties"]
 
     for engine in engines:
@@ -68,6 +71,29 @@ def run(mcp_url, health_url, engines):
                 assert attachment["mimeType"] == mime
                 assert len(data) > 100
                 print(f"PASS {engine} {'TSV' if separator == chr(9) else 'CSV'} {extension}: {expected_type} ({len(data)} bytes)", flush=True)
+
+    # Use a coloured style to catch backgrounds that override transparency.
+    for engine in engines:
+        result = post({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {
+            "name": "generate_boxplot", "arguments": {
+                "values": "A,B\n1,2\n2,3\n3,4\n4,5", "plot_engine": engine,
+                "style_guide": "economist", "output_format": "svg",
+                "transparent_background": True, "unfilled_shapes": True,
+            },
+        }})["result"]
+        assert not result.get("isError"), result
+        svg = base64.b64decode(result["content"][1]["resource"]["blob"], validate=True)
+        root = ET.fromstring(svg)
+        assert b"89.411765%" not in svg, "Economist background is still painted"
+        paths = [el for el in root.iter() if el.tag.endswith("path") and ("stroke" in el.attrib or "stroke:" in el.attrib.get("style", ""))]
+        assert any(el.attrib.get("fill") == "none" or "fill:none" in el.attrib.get("style", "").replace(" ", "") for el in paths), "Missing editable unfilled paths"
+        for path in paths:
+            fill = path.attrib.get("fill")
+            if fill is not None:
+                assert fill == "none", "An HTTP-exported box still has a fill"
+            else:
+                assert "fill:none" in path.attrib.get("style", "").replace(" ", ""), "An HTTP-exported box still has a fill"
+        print(f"PASS {engine} transparent, unfilled HTTP SVG", flush=True)
 
     rejected = post({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {
         "name": "generate_boxplot", "arguments": {"values": "A,B\n1,2", "colors": ['red"); system("id"); #']},

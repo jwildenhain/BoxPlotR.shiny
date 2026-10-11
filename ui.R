@@ -647,6 +647,13 @@ shinyUI(fluidPage(
         tabPanel(
           "Data visualization",
           div(
+            class = "export-options",
+            h5("PDF and SVG download options"),
+            checkboxInput("transparentBackground", "Transparent background", FALSE),
+            checkboxInput("unfilledShapes", "Unfilled shapes", FALSE),
+            helpText("Remove the background and shape fills for recolouring in Illustrator. Outlines, whiskers and labels stay visible. These options apply to PDF and SVG downloads.")
+          ),
+          div(
             class = "controls-row",
             downloadButton("downloadPlotEPS", "Download eps-file"),
             downloadButton("downloadPlotPDF", "Download pdf-file"),
@@ -677,6 +684,13 @@ shinyUI(fluidPage(
         ),
         tabPanel(
           "News",
+          h5("October 5, 2026"),
+          HTML(paste(
+            "<p><b>Minor bugfix update:</b> Restored transparent figure downloads. PDF and SVG exports now offer transparent backgrounds and unfilled shapes for recolouring in Illustrator, ",
+            "while keeping outlines, whiskers and labels editable. Both options are also available through MCP for PNG, SVG and PDF. ",
+            "Fixed PDF font rendering in the modern plotting engine and corrected MCP usage analytics.</p>",
+            sep = ""
+          )),
           h5("September 13, 2026"),
           HTML(paste(
             "<p><b>Public BoxPlotR MCP launch:</b> AI assistants can now connect directly to <code>https://mcp.chemgrid.org/boxplotr/</code> without an account or API key. ",
@@ -739,9 +753,22 @@ shinyUI(fluidPage(
             "<li><b>Input:</b> CSV or TSV text in <code>values</code>, with one numeric group per column.</li>",
             "<li><b>Formats:</b> Set <code>output_format</code> to <code>png</code>, <code>svg</code> or <code>pdf</code>. PNG is returned as an MCP image; SVG and PDF as embedded file resources.</li>",
             "</ul>",
-            "<h4>Codex setup</h4>",
+            "<p>For Illustrator-ready exports, set <code>transparent_background</code> and <code>unfilled_shapes</code> to <code>true</code>. Transparency overrides style backgrounds and works with PNG, SVG and PDF.</p><h4>Codex setup</h4>",
             "<pre><code>codex mcp add boxplotr --url https://mcp.chemgrid.org/boxplotr/</code></pre>",
-            "<p>Claude Desktop, Antigravity and other clients can use the same endpoint when configured for remote Streamable HTTP MCP. No authorization header is required.</p>",
+            "<h4>Claude Desktop setup</h4>",
+            "<ol><li>Open <b>Customize &rarr; Connectors</b> in Claude Desktop.</li>",
+            "<li>Choose <b>Add custom connector</b> (or <b>Add &rarr; Custom &rarr; Web</b>). Name it <b>BoxPlotR</b> and enter <code>https://mcp.chemgrid.org/boxplotr/</code> as the remote MCP server URL.</li>",
+            "<li>Continue through the setup. Select <b>No sign in</b> for authentication and leave request headers empty, then add the connector.</li>",
+            "<li>In a conversation, open <b>+ &rarr; Connectors</b> and enable BoxPlotR. Allow the <code>generate_boxplot</code> tool when prompted.</li></ol>",
+            "<p>On a managed Team or Enterprise account, an organisation owner may need to add the connector first. No BoxPlotR account or API key is needed. <a href=\"https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp\" target=\"_blank\" rel=\"noopener noreferrer\">Official Claude connector instructions</a>.</p>",
+            "<h4>Antigravity setup</h4>",
+            "<ol><li>In the editor's agent side panel, open <b>&hellip; &rarr; MCP Servers &rarr; Manage MCP Servers &rarr; View raw config</b>.</li>",
+            "<li>Add the <code>boxplotr</code> entry below to your configuration. If <code>mcpServers</code> already exists, merge the entry into it and keep your other servers.</li></ol>",
+            "<pre><code>{\n  \"mcpServers\": {\n    \"boxplotr\": {\n      \"serverUrl\": \"https://mcp.chemgrid.org/boxplotr/\"\n    }\n  }\n}</code></pre>",
+            "<ol start=\"3\"><li>Save the configuration, refresh the server list or restart Antigravity, and enable <code>generate_boxplot</code> if requested.</li></ol>",
+            "<p>Use <code>serverUrl</code> for this remote connection; no headers, API key or OAuth configuration are needed. <a href=\"https://www.antigravity.google/docs/mcp\" target=\"_blank\" rel=\"noopener noreferrer\">Official Antigravity MCP instructions</a>.</p>",
+            "<h4>Try the connection</h4>",
+            "<p>Ask your assistant: <i>Use BoxPlotR to make a box plot from Control values 1, 2, 3, 4 and Treatment values 2, 3, 4, 5. Return a PDF with a transparent background and unfilled shapes for Illustrator.</i> It should call <code>generate_boxplot</code> and return the figure attachment.</p>",
             "<p><a class=\"btn btn-primary\" href=\"mcp-guide.html\" target=\"_blank\">Open the illustrated MCP guide</a></p>",
             "<h4>Example tool arguments</h4>",
             "<pre><code>{\n  \"values\": \"Control,Treatment\\n1.2,2.4\\n1.5,2.9\\n1.8,3.1\",\n  \"plot_type\": \"boxplot\",\n  \"plot_engine\": \"ggplot2\",\n  \"title\": \"Treatment response\",\n  \"show_points\": true,\n  \"add_means\": true,\n  \"output_format\": \"png\"\n}</code></pre>",
@@ -796,7 +823,7 @@ shinyUI(fluidPage(
             sep = ""
           )),
           h5("Q: Which options are available through the public MCP endpoint?"),
-          HTML("<p>A: The public tool accepts <code>values</code>, <code>plot_type</code>, <code>plot_engine</code>, <code>style_guide</code>, <code>orientation</code>, <code>log_scale</code>, <code>title</code>, <code>x_label</code>, <code>y_label</code>, <code>colors</code>, <code>show_points</code>, <code>add_means</code> and <code>output_format</code>. Use six-digit hexadecimal colours such as <code>#2563eb</code>. Notches, variable box widths, mean confidence intervals, subtitles, grid selection and point-style controls are local stdio options, not public tool parameters.</p>"),
+          HTML("<p>A: The public tool accepts <code>values</code>, <code>plot_type</code>, <code>plot_engine</code>, <code>style_guide</code>, <code>orientation</code>, <code>log_scale</code>, <code>whisker_type</code>, <code>title</code>, <code>x_label</code>, <code>y_label</code>, <code>colors</code>, <code>show_points</code>, <code>add_means</code>, <code>transparent_background</code>, <code>unfilled_shapes</code> and <code>output_format</code>. Use six-digit hexadecimal colours such as <code>#2563eb</code>. Notches, variable box widths, mean confidence intervals, subtitles, grid selection and point-style controls are local stdio options, not public tool parameters.</p>"),
           h5("Q: What does the public MCP endpoint return?"),
           HTML("<p>A: Set <code>output_format</code> to <code>png</code>, <code>svg</code> or <code>pdf</code>. The response contains a text summary plus a PNG image or an embedded SVG/PDF resource with a MIME type and base64 <code>blob</code>. Save the returned attachment in your client. The public tool chooses a temporary server path; it does not accept <code>output_path</code>.</p>"),
           h5("Q: How do output formats work with the local stdio server?"),
