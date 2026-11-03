@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Free Online Box Plot Generator — BoxPlotR</title>
+  <meta name="description" content="Create custom box-and-whisker plots online from CSV, Excel or pasted data. Show raw observations, means and confidence intervals, then export editable PDF or SVG figures.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://boxplotr.chemgrid.org/box-plot-generator.html">
+  <link rel="stylesheet" href="seo.css">
+  <meta property="og:title" content="Free Online Box Plot Generator — BoxPlotR">
+  <meta property="og:description" content="Create publication-ready box plots from CSV, Excel or pasted data without coding.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://boxplotr.chemgrid.org/box-plot-generator.html">
+  <meta property="og:image" content="https://boxplotr.chemgrid.org/mcp-example-points-means.png">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoObject",
+      "name": "BoxPlotR を使って箱ひげ図を作成する",
+      "description": "A step-by-step TogoTV tutorial showing how to upload data, create and customise box, violin and bean plots in BoxPlotR, then download the result.",
+      "thumbnailUrl": ["https://i.ytimg.com/vi/ls9N6Yp9tRQ/hqdefault.jpg"],
+      "uploadDate": "2021-11-09",
+      "duration": "PT6M46S",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/ls9N6Yp9tRQ",
+      "contentUrl": "https://www.youtube.com/watch?v=ls9N6Yp9tRQ",
+      "inLanguage": "ja"
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <a href="/">← BoxPlotR</a>
+    <h1>Free online box plot generator</h1>
+    <p class="lede">Turn CSV, Excel or pasted numeric data into a publication-ready box-and-whisker plot without writing code.</p>
+    <div class="actions">
+      <a class="button" href="/">Create a box plot</a>
+      <a class="button secondary" href="example-five-samples.csv">Download example CSV</a>
+    </div>
+  </header>
+  <main>
+    <section>
+      <h2>What BoxPlotR can show</h2>
+      <div class="grid">
+        <article class="card"><h3>Distribution summary</h3><p>Display the median, first and third quartiles, whiskers and individual outliers for every sample.</p></article>
+        <article class="card"><h3>Raw observations</h3><p>Overlay centred, jittered or bee-swarm points so readers can see the data behind the summary.</p></article>
+        <article class="card"><h3>Means and intervals</h3><p>Add sample means and 83%, 90% or 95% confidence intervals when those statistics suit the analysis.</p></article>
+      </div>
+    </section>
+    <section>
+      <h2>How to make a box plot</h2>
+      <ol>
+        <li>Open BoxPlotR and choose <strong>Data upload</strong>.</li>
+        <li>Load the example, upload CSV/TSV/Excel, or paste a table with one numeric sample per column.</li>
+        <li>Open <strong>Data visualization</strong> and customise colours, whiskers, raw points, labels and orientation.</li>
+        <li>Download PDF or SVG for an editable vector figure, or download the plotted data as CSV.</li>
+      </ol>
+      <img src="mcp-example-points-means.png" alt="Five BoxPlotR box plots with coloured boxes, jittered raw observations and red mean markers" width="960" height="600">
+    </section>
+    <section>
+      <h2>Video walkthrough</h2>
+      <p>This 6-minute tutorial from <a href="https://togotv.dbcls.jp/en/20211109.html">TogoTV</a> demonstrates data upload, box, violin and bean plots, colours, labels, orientation, grids and figure downloads. The narration and interface labels are in Japanese, while the complete BoxPlotR workflow is shown on screen.</p>
+      <div class="video-frame">
+        <iframe src="https://www.youtube-nocookie.com/embed/ls9N6Yp9tRQ" title="TogoTV tutorial: create and customise plots with BoxPlotR" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      </div>
+      <p><a href="https://www.youtube.com/watch?v=ls9N6Yp9tRQ">Watch the BoxPlotR tutorial on YouTube</a>.</p>
+      <h3>More BoxPlotR videos</h3>
+      <ul>
+        <li><a href="https://www.youtube.com/watch?v=N8u5zOyjyZc">Copying data from Google Sheets to BoxPlotR</a> — Dana Lee Ling, 1:25.</li>
+        <li><a href="https://www.youtube.com/watch?v=Xf6GGZ7hI50">Adjusting the minimum and maximum for a clearer BoxPlotR display</a> — Dana Lee Ling, 5:12.</li>
+        <li><a href="https://www.youtube.com/watch?v=MgCULTRpQdA">BoxPlotR and Statisty: two tools for box-and-whisker plots</a> — Dana Lee Ling, 3:20.</li>
+        <li><a href="https://www.youtube.com/watch?v=8iQwmuEraRs">Using BoxPlotR with Google Sheets</a> — sjgknight, 1:14. This older video uses an alternate BoxPlotR deployment, but its data workflow remains relevant.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>What the box and whiskers mean</h2>
+      <p>The centre line is the sample median and the box spans the first to third quartile. BoxPlotR supports Tukey whiskers, minimum-to-maximum Spear whiskers and Altman 5th-to-95th-percentile whiskers. Read the <a href="box-plot-whiskers.html">whisker definition guide</a> before choosing a non-default method.</p>
+      <nav class="related" aria-label="Related BoxPlotR guides"><a href="violin-plot-generator.html">Violin plots</a><a href="publication-ready-plots.html">Publication-ready exports</a><a href="mcp-guide.html">AI and MCP guide</a></nav>
+    </section>
+  </main>
+  <footer>BoxPlotR is a free, open-source scientific plotting tool described in <a href="https://doi.org/10.1038/nmeth.2811">Nature Methods (2014)</a>.</footer>
+</body>
+</html>

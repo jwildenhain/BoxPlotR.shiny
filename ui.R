@@ -2,12 +2,71 @@ shinyUI(fluidPage(
   style = "padding: 30px; max-width: 1400px; margin: 0 auto;",
   div(
     class = "header-bar",
-    h1("BoxPlotR", span("a web-tool for generation of box plots", class = "subtitle")),
+    h1("BoxPlotR", span("free online box plot, violin plot and bean plot generator", class = "subtitle")),
     span("v2.1 Modernized", class = "version-badge")
   ),
   tags$head(
     tags$script(src = "https://chemgrid.org/chemgrid-analytics.js?v=20260905-2"),
-    tags$title("BoxPlotR"),
+    tags$title("BoxPlotR — Free Online Box Plot, Violin Plot and Bean Plot Generator"),
+    tags$meta(
+      name = "description",
+      content = paste(
+        "Create publication-ready box plots, violin plots and bean plots online",
+        "from CSV, Excel or pasted data. Add raw points, means and confidence",
+        "intervals, then export editable PDF or SVG figures for free."
+      )
+    ),
+    tags$meta(name = "robots", content = "index, follow, max-image-preview:large"),
+    tags$link(rel = "canonical", href = "https://boxplotr.chemgrid.org/"),
+    tags$meta(property = "og:type", content = "website"),
+    tags$meta(property = "og:site_name", content = "BoxPlotR"),
+    tags$meta(
+      property = "og:title",
+      content = "BoxPlotR — Free Online Scientific Plot Generator"
+    ),
+    tags$meta(
+      property = "og:description",
+      content = paste(
+        "Create publication-ready box, violin and bean plots from your data",
+        "and export editable PDF or SVG figures."
+      )
+    ),
+    tags$meta(property = "og:url", content = "https://boxplotr.chemgrid.org/"),
+    tags$meta(
+      property = "og:image",
+      content = "https://boxplotr.chemgrid.org/mcp-example-points-means.png"
+    ),
+    tags$meta(
+      property = "og:image:alt",
+      content = "Publication-ready BoxPlotR box plots with raw observations and means"
+    ),
+    tags$meta(name = "twitter:card", content = "summary_large_image"),
+    tags$meta(
+      name = "twitter:title",
+      content = "BoxPlotR — Free Online Scientific Plot Generator"
+    ),
+    tags$meta(
+      name = "twitter:description",
+      content = "Create and export publication-ready box, violin and bean plots online."
+    ),
+    tags$meta(
+      name = "twitter:image",
+      content = "https://boxplotr.chemgrid.org/mcp-example-points-means.png"
+    ),
+    tags$script(
+      type = "application/ld+json",
+      HTML(paste0(
+        '{"@context":"https://schema.org","@type":"SoftwareApplication",',
+        '"name":"BoxPlotR","url":"https://boxplotr.chemgrid.org/",',
+        '"description":"Free online tool for creating publication-ready box plots, violin plots and bean plots from CSV, Excel or pasted data.",',
+        '"applicationCategory":"ScientificApplication","operatingSystem":"Web browser",',
+        '"isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},',
+        '"image":"https://boxplotr.chemgrid.org/mcp-example-points-means.png",',
+        '"citation":"https://doi.org/10.1038/nmeth.2811",',
+        '"sameAs":["https://github.com/jwildenhain/BoxPlotR.shiny","https://doi.org/10.1038/nmeth.2811"],',
+        '"featureList":["Box plots","Violin plots","Bean plots","Raw data overlays","Editable PDF and SVG exports","CSV and Excel input"]}'
+      ))
+    ),
     tags$style(HTML(
       "
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -163,9 +222,11 @@ shinyUI(fluidPage(
         border-bottom: 2px solid #e2e8f0 !important;
         margin-bottom: 24px !important;
         display: flex;
+        flex-wrap: wrap;
         gap: 6px;
       }
       .nav-tabs > li {
+        float: none !important;
         margin-bottom: -2px !important;
       }
       .nav-tabs > li > a {
@@ -227,6 +288,17 @@ shinyUI(fluidPage(
       .plot-card:hover {
         transform: translateY(-2px);
       }
+
+      #boxPlot {
+        max-width: 100%;
+        overflow: hidden;
+      }
+      #boxPlot img {
+        display: block;
+        height: auto !important;
+        margin: 0 auto;
+        max-width: 100% !important;
+      }
       
       .table-card {
         background: #ffffff !important;
@@ -234,6 +306,8 @@ shinyUI(fluidPage(
         padding: 24px !important;
         box-shadow: 0 10px 30px rgba(15, 23, 42, 0.03) !important;
         border: 1px solid rgba(226, 232, 240, 0.8) !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
       
       .table-card table {
@@ -310,8 +384,100 @@ shinyUI(fluidPage(
         height: 8px !important;
         border-radius: 4px !important;
       }
+
+      .seo-intro {
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        border-radius: 16px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+        color: #334155;
+        line-height: 1.65;
+        margin: -10px 0 24px;
+        padding: 18px 24px;
+      }
+      .seo-intro p { margin: 0 0 10px; }
+      .seo-intro nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+      .seo-intro a { color: #0369a1; font-weight: 600; }
+
+      @media (max-width: 600px) {
+        .container-fluid {
+          padding: 16px !important;
+        }
+        .header-bar {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 20px;
+          padding: 18px 20px;
+        }
+        .header-bar h1 {
+          display: block;
+          font-size: 24px;
+          line-height: 1.2;
+          width: 100%;
+        }
+        .header-bar .subtitle {
+          display: block;
+          font-size: 13px;
+          line-height: 1.4;
+          margin-top: 6px;
+        }
+        .version-badge {
+          align-self: flex-start;
+        }
+        .seo-intro {
+          line-height: 1.5;
+          margin: -4px 0 18px;
+          padding: 15px 17px;
+        }
+        .seo-intro p {
+          font-size: 13.5px !important;
+        }
+        .seo-intro nav {
+          gap: 4px 14px;
+        }
+        .seo-intro a {
+          padding: 3px 0;
+        }
+        .well {
+          max-width: none;
+          padding: 20px !important;
+        }
+        .span4 {
+          max-width: none;
+        }
+        .nav-tabs {
+          gap: 4px;
+        }
+        .nav-tabs > li > a {
+          border-radius: 10px !important;
+          font-size: 13px !important;
+          padding: 9px 12px !important;
+        }
+        .plot-card,
+        .table-card {
+          border-radius: 16px !important;
+          padding: 16px !important;
+        }
+      }
     "
     ))
+  ),
+  div(
+    class = "seo-intro",
+    p(
+      strong("Create publication-ready statistical figures without coding. "),
+      "Upload CSV or Excel data, or paste a numeric table, then customise box plots, ",
+      "violin plots and bean plots with raw observations, means, confidence intervals, ",
+      "journal styles and editable PDF or SVG export. BoxPlotR is free and open source."
+    ),
+    tags$nav(
+      `aria-label` = "BoxPlotR guides",
+      tags$a(href = "box-plot-generator.html", "Box plot generator guide"),
+      tags$a(href = "violin-plot-generator.html", "Violin plot guide"),
+      tags$a(href = "publication-ready-plots.html", "Publication-ready figures"),
+      tags$a(href = "box-plot-whiskers.html", "Whisker definitions")
+    )
   ),
   sidebarLayout(
     sidebarPanel(
@@ -561,13 +727,11 @@ shinyUI(fluidPage(
         ),
         conditionalPanel(
           condition = "input.myOrientation=='0'",
-          h5("Y-axis range (eg., '0,10'):"),
-          textInput("ylimit", "", value = "")
+          textInput("ylimit", "Y-axis range (e.g., 0,10):", value = "")
         ),
         conditionalPanel(
           condition = "input.myOrientation=='1'",
-          h5("X-axis range (eg., '0,10'):"),
-          textInput("xlimit", "", value = "")
+          textInput("xlimit", "X-axis range (e.g., 0,10):", value = "")
         ),
         checkboxInput(
           "logScale", "Change to log scale (only for data >0)", FALSE
